@@ -34,7 +34,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 </head>
 <body>
 <header>
-  <div class="topline"><div class="eyebrow">Organização diária</div><button id="exportBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">Exportar dados</button></div>
+  <div class="topline" style="flex-wrap:wrap"><div class="eyebrow">Organização diária</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button id="exportBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬇ Exportar dados</button><button id="importBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬆ Importar dados</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar ficheiro de cópia de segurança"></div></div>
   <h1>As minhas tarefas</h1><p>Betão · Pedreira · Trabalho em dia</p>
   <div class="stats">
     <div class="stat"><strong id="pendingCount">0</strong><span>Pendentes</span></div>
@@ -120,7 +120,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
   <div class="sectiontitle"><h2 id="listHeading">Tarefas pendentes</h2><span class="sub" id="resultCount">0 tarefas</span></div>
   <div class="searchrow"><input id="search" type="search" placeholder="Pesquisar tarefas..." aria-label="Pesquisar tarefas"><select id="sortBy" aria-label="Ordenar" style="max-width:145px"><option value="priority">Prioridade</option><option value="date">Prazo</option><option value="newest">Mais recentes</option></select></div>
   <div class="tasklist" id="taskList"></div>
-  <div class="footer">Os dados ficam guardados neste dispositivo e neste navegador. Usa “Exportar dados” para criar uma cópia de segurança. Os avisos são verificados quando a aplicação está aberta; lembretes fiáveis em segundo plano exigem uma versão com serviço de notificações.</div>
+  <div class="footer">Os dados ficam guardados neste dispositivo e neste navegador. Usa “Exportar dados” para guardar uma cópia de segurança e “Importar dados” noutro dispositivo para recuperar tarefas, manutenções e calibrações/ensaios. Os avisos são verificados quando a aplicação está aberta; lembretes fiáveis em segundo plano exigem uma versão com serviço de notificações.</div>
 </main>
 <script>
 const KEY='tarefasTrabalhoRestradasV1';
@@ -179,7 +179,65 @@ $('taskForm').addEventListener('submit',e=>{e.preventDefault();const title=$('ta
 $('cancelEdit').onclick=resetForm;
 $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;activeFilter=b.dataset.filter;document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===b));render()});
 $('search').addEventListener('input',render);$('sortBy').addEventListener('change',render);
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),tasks},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-tarefas-trabalho.json';a.click();URL.revokeObjectURL(a.href)};
+function exportBackup(){
+  const backup={
+    app:'Tarefas de Trabalho — Restradas',
+    version:2,
+    exportedAt:new Date().toISOString(),
+    tasks,
+    maintenanceRecords,
+    calibrationRecords
+  };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='backup-tarefas-restradas-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$('exportBtn').onclick=exportBackup;
+$('importBtn').onclick=()=>{$('importFile').value='';$('importFile').click()};
+$('importFile').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file)return;
+  try{
+    const parsed=JSON.parse(await file.text());
+    if(!parsed||typeof parsed!=='object'||!Array.isArray(parsed.tasks)){
+      throw new Error('O ficheiro não contém uma lista de tarefas válida.');
+    }
+    if(parsed.maintenanceRecords!==undefined&&!Array.isArray(parsed.maintenanceRecords)){
+      throw new Error('A lista de manutenções do ficheiro não é válida.');
+    }
+    if(parsed.calibrationRecords!==undefined&&!Array.isArray(parsed.calibrationRecords)){
+      throw new Error('A lista de calibrações/ensaios do ficheiro não é válida.');
+    }
+    const parts=[parsed.tasks.length+' tarefa(s)'];
+    if(Array.isArray(parsed.maintenanceRecords))parts.push(parsed.maintenanceRecords.length+' manutenção(ões)');
+    if(Array.isArray(parsed.calibrationRecords))parts.push(parsed.calibrationRecords.length+' registo(s) de calibração/ensaio');
+    const detail=parts.join(', ');
+    if(!confirm('O ficheiro contém '+detail+'.\n\nA importação vai substituir os dados correspondentes que estão guardados neste dispositivo. Esta ação não pode ser desfeita.\n\nQueres continuar?'))return;
+    tasks=parsed.tasks;
+    localStorage.setItem(KEY,JSON.stringify(tasks));
+    if(Array.isArray(parsed.maintenanceRecords)){
+      maintenanceRecords=parsed.maintenanceRecords;
+      localStorage.setItem(MAINT_KEY,JSON.stringify(maintenanceRecords));
+    }
+    if(Array.isArray(parsed.calibrationRecords)){
+      calibrationRecords=parsed.calibrationRecords;
+      localStorage.setItem(CAL_KEY,JSON.stringify(calibrationRecords));
+    }
+    resetForm();
+    resetRecordForm('maintenance');
+    resetRecordForm('calibration');
+    render();renderRecords('maintenance');renderRecords('calibration');
+    alert('Importação concluída! Foram recuperados: '+detail+'.');
+  }catch(err){
+    alert('Não foi possível importar este ficheiro. Confirma que selecionaste uma cópia de segurança JSON válida.\n\nDetalhe: '+err.message);
+  }finally{
+    e.target.value='';
+  }
+});
 
 function weeklyReport(){
  const now=new Date(); const cutoff=now.getTime()-7*24*60*60*1000;
