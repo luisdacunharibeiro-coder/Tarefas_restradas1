@@ -71,7 +71,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
   </div>
 
   <section class="panel hidden" id="maintenancePanel">
-    <div class="panelhead"><div><h2>🔧 Manutenções</h2><div class="sub">Registo independente de manutenções realizadas e previstas</div></div><button class="secondary" id="closeMaintenance">Fechar</button></div>
+    <div class="panelhead"><div><h2>🔧 Manutenções</h2><div class="sub">Registo independente; podes configurar avisos 1 ou 2 meses antes da data</div></div><button class="secondary" id="closeMaintenance">Fechar</button></div>
     <form id="maintenanceForm">
       <input id="maintenanceId" type="hidden">
       <div class="formgrid">
@@ -79,6 +79,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="maintenanceArea">Área</label><select id="maintenanceArea"><option>Pedreira</option><option>Betão</option><option>Geral</option></select></div>
         <div><label for="maintenanceEquipment">Equipamento</label><input id="maintenanceEquipment" maxlength="100" placeholder="Ex.: CAT 345"></div>
         <div><label for="maintenanceDate">Data prevista / realizada *</label><input id="maintenanceDate" type="date" required></div>
+        <div><label for="maintenanceReminder">Avisar antes da data</label><select id="maintenanceReminder"><option value="0">Sem aviso</option><option value="1">1 mês antes</option><option value="2">2 meses antes</option></select></div>
         <div><label for="maintenanceStatus">Estado</label><select id="maintenanceStatus"><option>Prevista</option><option>Em curso</option><option>Realizada</option><option>Adiada</option></select></div>
         <div><label for="maintenanceOwner">Responsável</label><input id="maintenanceOwner" maxlength="80"></div>
         <div class="full"><label for="maintenanceNotes">Observações / trabalhos efetuados</label><textarea id="maintenanceNotes" maxlength="1000" placeholder="Peças, anomalias, custos, fornecedor..."></textarea></div>
@@ -91,7 +92,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
   </section>
 
   <section class="panel hidden" id="calibrationPanel">
-    <div class="panelhead"><div><h2>🧪 Calibrações e ensaios</h2><div class="sub">Controlo independente de verificações, calibrações e ensaios</div></div><button class="secondary" id="closeCalibration">Fechar</button></div>
+    <div class="panelhead"><div><h2>🧪 Calibrações e ensaios</h2><div class="sub">Controlo independente; podes configurar avisos 1 ou 2 meses antes da próxima data</div></div><button class="secondary" id="closeCalibration">Fechar</button></div>
     <form id="calibrationForm">
       <input id="calibrationId" type="hidden">
       <div class="formgrid">
@@ -100,6 +101,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="calibrationEquipment">Equipamento / elemento</label><input id="calibrationEquipment" maxlength="100" placeholder="Ex.: Balança de cimento"></div>
         <div><label for="calibrationDate">Última data / data do ensaio</label><input id="calibrationDate" type="date"></div>
         <div><label for="calibrationNext">Próxima data prevista</label><input id="calibrationNext" type="date"></div>
+        <div><label for="calibrationReminder">Avisar antes da data</label><select id="calibrationReminder"><option value="0">Sem aviso</option><option value="1">1 mês antes</option><option value="2">2 meses antes</option></select></div>
         <div><label for="calibrationStatus">Resultado / estado</label><select id="calibrationStatus"><option>Conforme</option><option>Não conforme</option><option>Pendente</option><option>Agendado</option><option>Não aplicável</option></select></div>
         <div><label for="calibrationOwner">Responsável / entidade</label><input id="calibrationOwner" maxlength="100" placeholder="Laboratório ou responsável"></div>
         <div class="full"><label for="calibrationNotes">Observações / referência do relatório</label><textarea id="calibrationNotes" maxlength="1000" placeholder="N.º certificado, resultados, ações necessárias..."></textarea></div>
@@ -333,7 +335,57 @@ async function enableNotifications(){
  }catch(e){alert('Não foi possível ativar os avisos neste navegador.')}
 }
 let notifiedToday='';
+function addMonthsSafe(dateString, months){
+  if(!dateString||!months)return null;
+  const parts=dateString.split('-').map(Number);
+  if(parts.length!==3||parts.some(Number.isNaN))return null;
+  const originalDay=parts[2], d=new Date(parts[0],parts[1]-1,1,12,0,0);
+  d.setMonth(d.getMonth()+Number(months));
+  const lastDay=new Date(d.getFullYear(),d.getMonth()+1,0,12,0,0).getDate();
+  d.setDate(Math.min(originalDay,lastDay));
+  return d.toISOString().slice(0,10);
+}
+function recordReminderItems(){
+  const today=new Date().toISOString().slice(0,10), items=[];
+  maintenanceRecords.forEach(r=>{
+    const months=Number(r.reminder||0), due=r.date;
+    if(months&&due&&r.status!=='Realizada'){
+      const start=addMonthsSafe(due,-months);
+      if(start&&today>=start&&today<=due)items.push({key:'m-'+r.id,title:r.title,due,kind:'Manutenção',months});
+    }
+  });
+  calibrationRecords.forEach(r=>{
+    const months=Number(r.reminder||0), due=r.next;
+    if(months&&due&&r.status!=='Não aplicável'){
+      const start=addMonthsSafe(due,-months);
+      if(start&&today>=start&&today<=due)items.push({key:'c-'+r.id,title:r.title,due,kind:'Calibração/ensaio',months});
+    }
+  });
+  return items;
+}
+function checkRecordNotifications(){
+  const items=recordReminderItems();
+  const today=new Date().toISOString().slice(0,10);
+  const active=items.filter(x=>x.due>=today);
+  if(active.length){
+    cloudStatus((cloudUser?'Sincronizado com a nuvem':'Dados guardados neste dispositivo')+' · '+active.length+' aviso(s) de manutenção/calibração');
+  }
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  let sent={};try{sent=JSON.parse(localStorage.getItem('restradasRecordNoticesV1')||'{}')}catch(e){}
+  active.forEach(item=>{
+    const noticeKey=item.key+'-'+today;
+    if(sent[noticeKey])return;
+    const days=Math.ceil((new Date(item.due+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);
+    const timing=days===0?'vence hoje':days===1?'vence amanhã':`vence em ${days} dias`;
+    try{
+      new Notification(item.kind+' · '+item.title,{body:`Data limite ${dateLabel(item.due)} (${timing}). Aviso configurado para ${item.months} mês(es) antes.`,icon:'./icon-192.png'});
+      sent[noticeKey]=true;
+    }catch(e){}
+  });
+  try{localStorage.setItem('restradasRecordNoticesV1',JSON.stringify(sent))}catch(e){}
+}
 function checkNotifications(){
+ checkRecordNotifications();
  if(!('Notification' in window)||Notification.permission!=='granted')return;
  const today=new Date().toISOString().slice(0,10);
  if(notifiedToday===today)return;
@@ -362,7 +414,7 @@ function saveRecords(kind){
   const isM=kind==='maintenance';
   const records=isM?maintenanceRecords:calibrationRecords;
   localStorage.setItem(isM?MAINT_KEY:CAL_KEY,JSON.stringify(records));
-  renderRecords(kind);queueCloudSave();
+  renderRecords(kind);queueCloudSave();checkRecordNotifications();
 }
 function showRecordPanel(kind){
   $('weeklyPanel').classList.add('hidden');
@@ -387,7 +439,8 @@ function renderRecords(kind){
     const del=document.createElement('button');del.className='iconbtn';del.textContent='×';del.title='Apagar registo';del.onclick=()=>{if(confirm('Queres apagar este registo?')){const arr=isM?maintenanceRecords:calibrationRecords;const idx=arr.findIndex(x=>x.id===r.id);if(idx>=0)arr.splice(idx,1);saveRecords(kind)}};
     top.append(title,del);content.append(top);
     const chips=document.createElement('div');chips.className='chips';
-    const values=[r.area,r.equipment,r.status,r.date?'Data · '+dateLabel(r.date):'',!isM&&r.next?'Próxima · '+dateLabel(r.next):'',r.owner?'Responsável · '+r.owner:''].filter(Boolean);
+    const reminderDate=isM?r.date:r.next;const reminderMonths=Number(r.reminder||0);const reminderText=reminderMonths&&reminderDate&&r.status!=='Realizada'&&r.status!=='Não aplicável'?`Aviso ${reminderMonths} mês(es) antes` : '';
+    const values=[r.area,r.equipment,r.status,r.date?'Data · '+dateLabel(r.date):'',!isM&&r.next?'Próxima · '+dateLabel(r.next):'',reminderText,r.owner?'Responsável · '+r.owner:''].filter(Boolean);
     values.forEach((v,i)=>{const chip=document.createElement('span');chip.className='chip'+(i===2&&(/Não conforme|Adiada/.test(v))?' high':'');chip.textContent=v;chips.append(chip)});
     content.append(chips);
     if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
@@ -398,9 +451,9 @@ function renderRecords(kind){
 }
 function fillRecordForm(kind,r){
   const isM=kind==='maintenance', prefix=isM?'maintenance':'calibration';
-  const fields=isM?['title','area','equipment','date','status','owner','notes']:['title','area','equipment','date','next','status','owner','notes'];
+  const fields=isM?['title','area','equipment','date','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];
   $(prefix+'Id').value=r.id;
-  fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));if(el)el.value=r[f]||''});
+  fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));if(el)el.value=(r[f]!==undefined&&r[f]!==null)?String(r[f]):(f==='reminder'?'0':'')});
   $(prefix+'Save').textContent='Guardar alterações';
   $(prefix+'Cancel').classList.remove('hidden');
   $(prefix+'Panel').scrollIntoView({behavior:'smooth',block:'start'});
@@ -413,7 +466,7 @@ function resetRecordForm(kind){
 }
 function setupRecordForm(kind){
   const isM=kind==='maintenance', prefix=isM?'maintenance':'calibration';
-  const fields=isM?['title','area','equipment','date','status','owner','notes']:['title','area','equipment','date','next','status','owner','notes'];
+  const fields=isM?['title','area','equipment','date','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];
   $(prefix+'Form').addEventListener('submit',e=>{
     e.preventDefault();
     const r={id:$(prefix+'Id').value||Date.now().toString(36)+Math.random().toString(36).slice(2,7)};
@@ -445,7 +498,7 @@ $('cloudLogout').onclick=async()=>{
 };
 
 
-load();render();renderRecords('maintenance');renderRecords('calibration');checkNotifications();
+load();render();renderRecords('maintenance');renderRecords('calibration');checkNotifications();checkRecordNotifications();
 (async()=>{
   const {data,error}=await supabaseClient.auth.getSession();
   if(error){cloudStatus('Erro ao verificar sessão: '+error.message);return;}
