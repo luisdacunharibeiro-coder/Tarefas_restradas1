@@ -33,6 +33,18 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 </style>
 </head>
 <body>
+<section id="cloudPanel" style="max-width:760px;margin:12px auto;padding:14px;background:#fff;border:1px solid #e0e7e3;border-radius:16px">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+    <div><strong>Sincronização entre dispositivos</strong><div id="cloudStatus" class="sub">A ligar ao Supabase…</div></div>
+    <button id="cloudLogout" class="secondary hidden" type="button">Terminar sessão</button>
+  </div>
+  <form id="cloudLoginForm" style="margin-top:10px">
+    <label for="cloudEmail">E-mail</label><input id="cloudEmail" type="email" autocomplete="username" required placeholder="O e-mail da tua conta Supabase">
+    <label for="cloudPassword">Palavra-passe</label><input id="cloudPassword" type="password" autocomplete="current-password" required placeholder="A palavra-passe definida para a conta">
+    <button class="primary" type="submit">Iniciar sessão e sincronizar</button>
+    <p class="sub">Os dados serão guardados na tua base de dados privada. Não partilhes a palavra-passe.</p>
+  </form>
+</section>
 <header>
   <div class="topline" style="flex-wrap:wrap"><div class="eyebrow">Organização diária</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button id="exportBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬇ Exportar dados</button><button id="importBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬆ Importar dados</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar ficheiro de cópia de segurança"></div></div>
   <h1>As minhas tarefas</h1><p>Betão · Pedreira · Trabalho em dia</p>
@@ -122,13 +134,68 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
   <div class="tasklist" id="taskList"></div>
   <div class="footer">Os dados ficam guardados neste dispositivo e neste navegador. Usa “Exportar dados” para guardar uma cópia de segurança e “Importar dados” noutro dispositivo para recuperar tarefas, manutenções e calibrações/ensaios. Os avisos são verificados quando a aplicação está aberta; lembretes fiáveis em segundo plano exigem uma versão com serviço de notificações.</div>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL="https://ficczzzuqpnujsinscgr.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_c8mVy4vQ2fJGSL2UufyAwg_64JlEOMj";
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let cloudUser=null, cloudReady=false, cloudSaveTimer=null, cloudWriteChain=Promise.resolve();
+const cloudStatus=(message)=>{const el=document.getElementById("cloudStatus");if(el)el.textContent=message};
+function currentBackup(){return {tasks,maintenanceRecords,calibrationRecords};}
+function applyBackup(data){
+  tasks=Array.isArray(data.tasks)?data.tasks:[];
+  maintenanceRecords=Array.isArray(data.maintenanceRecords)?data.maintenanceRecords:[];
+  calibrationRecords=Array.isArray(data.calibrationRecords)?data.calibrationRecords:[];
+  localStorage.setItem(KEY,JSON.stringify(tasks));
+  localStorage.setItem(MAINT_KEY,JSON.stringify(maintenanceRecords));
+  localStorage.setItem(CAL_KEY,JSON.stringify(calibrationRecords));
+  render();renderRecords("maintenance");renderRecords("calibration");
+}
+function queueCloudSave(){
+  if(!cloudUser||!cloudReady)return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>{
+    const snapshot=JSON.parse(JSON.stringify(currentBackup()));
+    cloudWriteChain=cloudWriteChain.then(async()=>{
+      const {error}=await supabaseClient.from("tarefas_restradas_dados").upsert({user_id:cloudUser.id,dados:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+      if(error)throw error;
+      cloudStatus("Sincronizado com a nuvem · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
+    }).catch(err=>{console.error("Erro de sincronização:",err);cloudStatus("Erro ao sincronizar. Verifica a ligação e tenta novamente.");});
+  },500);
+}
+async function connectCloudSession(user){
+  cloudUser=user;cloudReady=false;
+  document.getElementById("cloudLoginForm").classList.add("hidden");
+  document.getElementById("cloudLogout").classList.remove("hidden");
+  cloudStatus("A carregar os dados da nuvem…");
+  const {data,error}=await supabaseClient.from("tarefas_restradas_dados").select("dados").eq("user_id",user.id).maybeSingle();
+  if(error){cloudStatus("Não foi possível ler os dados: "+error.message);return;}
+  const localHasData=tasks.length>0||maintenanceRecords.length>0||calibrationRecords.length>0;
+  if(data&&data.dados&&typeof data.dados==="object"){
+    applyBackup(data.dados);
+    cloudReady=true;
+    cloudStatus("Ligado e sincronizado. Podes usar o PC e o iPhone.");
+  }else{
+    cloudReady=true;
+    if(localHasData){
+      if(confirm("Ainda não existem dados na nuvem. Queres copiar para o Supabase os dados que estão guardados neste dispositivo?")){
+        queueCloudSave();cloudStatus("A enviar os dados deste dispositivo para a nuvem…");
+      }else{
+        applyBackup({tasks:[],maintenanceRecords:[],calibrationRecords:[]});
+        cloudStatus("Ligado. A nuvem está vazia; não foram enviados dados locais.");
+      }
+    }else{
+      queueCloudSave();cloudStatus("Ligado. A tua conta está pronta para sincronizar.");
+    }
+  }
+}
+document.addEventListener("DOMContentLoaded",()=>{});
 const KEY='tarefasTrabalhoRestradasV1';
 let tasks=[], activeFilter='Todas', editingId=null;
 const $=id=>document.getElementById(id);
 const priorityRank={'Alta':0,'Média':1,'Baixa':2};
 function load(){try{tasks=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(tasks))tasks=[]}catch(e){tasks=[]}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(tasks));render()}
+function persist(){localStorage.setItem(KEY,JSON.stringify(tasks));render();queueCloudSave()}
 function dateLabel(s){if(!s)return 'Sem prazo';const d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'})}
 function isOverdue(t){return t.due&&!t.done&&t.due<new Date().toISOString().slice(0,10)}
 function render(){
@@ -230,7 +297,7 @@ $('importFile').addEventListener('change',async e=>{
     resetForm();
     resetRecordForm('maintenance');
     resetRecordForm('calibration');
-    render();renderRecords('maintenance');renderRecords('calibration');
+    render();renderRecords('maintenance');renderRecords('calibration');queueCloudSave();
     alert('Importação concluída! Foram recuperados: '+detail+'.');
   }catch(err){
     alert('Não foi possível importar este ficheiro. Confirma que selecionaste uma cópia de segurança JSON válida.\n\nDetalhe: '+err.message);
@@ -295,7 +362,7 @@ function saveRecords(kind){
   const isM=kind==='maintenance';
   const records=isM?maintenanceRecords:calibrationRecords;
   localStorage.setItem(isM?MAINT_KEY:CAL_KEY,JSON.stringify(records));
-  renderRecords(kind);
+  renderRecords(kind);queueCloudSave();
 }
 function showRecordPanel(kind){
   $('weeklyPanel').classList.add('hidden');
@@ -362,8 +429,32 @@ $('calibrationNav').onclick=()=>showRecordPanel('calibration');
 $('closeMaintenance').onclick=()=>$('maintenancePanel').classList.add('hidden');
 $('closeCalibration').onclick=()=>$('calibrationPanel').classList.add('hidden');
 setupRecordForm('maintenance');setupRecordForm('calibration');loadRecords();
+$('cloudLoginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
+  cloudStatus('A iniciar sessão…');
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){cloudStatus('Não foi possível iniciar sessão: '+error.message);return;}
+  $('cloudPassword').value='';
+  await connectCloudSession(data.user);
+});
+$('cloudLogout').onclick=async()=>{
+  await supabaseClient.auth.signOut();cloudUser=null;cloudReady=false;
+  $('cloudLoginForm').classList.remove('hidden');$('cloudLogout').classList.add('hidden');
+  cloudStatus('Sessão terminada. Os dados locais continuam guardados neste dispositivo.');
+};
+
 
 load();render();renderRecords('maintenance');renderRecords('calibration');checkNotifications();
+(async()=>{
+  const {data,error}=await supabaseClient.auth.getSession();
+  if(error){cloudStatus('Erro ao verificar sessão: '+error.message);return;}
+  if(data.session) await connectCloudSession(data.session.user);
+  else cloudStatus('Inicia sessão para sincronizar entre PC e iPhone.');
+})();
+supabaseClient.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT'){cloudUser=null;cloudReady=false;}
+});
 setInterval(checkNotifications, 15*60*1000);
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
