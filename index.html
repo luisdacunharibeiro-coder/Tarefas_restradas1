@@ -29,6 +29,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 .searchrow{display:flex;gap:8px;align-items:center;margin-bottom:12px}.searchrow input{background:white}
 .tasklist{display:flex;flex-direction:column;gap:10px}.task{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:24px 1fr;gap:10px}.task.done{opacity:.68}.task.done .tasktitle{text-decoration:line-through}
 .check{width:22px;height:22px;accent-color:var(--green);margin-top:2px}.tasktop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.tasktitle{font-size:15px;font-weight:750;line-height:1.35;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{font-size:11px;padding:5px 8px;border-radius:999px;background:#eef2ef;color:#4c5a53;font-weight:700}.chip.area{background:#e7f3ed;color:#245849}.chip.high{background:#fde9e7;color:#a1251d}.chip.medium{background:#fff0d9;color:#8a4b0a}.chip.overdue{background:#b42318;color:white}.tasknotes{font-size:13px;color:#56645d;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}.taskactions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}.taskactions button{font-size:12px;padding:7px 9px}.empty{text-align:center;color:var(--muted);padding:28px 12px;border:1px dashed #cbd6d0;border-radius:15px;background:#ffffff99}.empty strong{display:block;color:var(--ink);margin-bottom:5px}.sectiontitle{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 12px}.sectiontitle h2{font-size:18px}.hidden{display:none!important}.footer{font-size:11px;color:var(--muted);text-align:center;padding:10px 18px}.danger{color:var(--red)}.iconbtn{border:0;background:transparent;color:#6b7771;padding:2px 4px;font-size:20px}
+.reminder-panel{background:#fff8e8;border:1px solid #f0d7a7;border-radius:16px;padding:14px;margin:0 0 14px}.reminder-panel h2{font-size:16px;margin:0 0 8px;color:#78420c}.reminder-item{padding:9px 0;border-top:1px solid #f0dfc0;font-size:13px}.reminder-item:first-of-type{border-top:0}.reminder-item strong{display:block;color:#18231f}.reminder-empty{font-size:13px;color:var(--muted)}
 @media(min-width:600px){main{padding:20px}.stats{max-width:460px}.formgrid{grid-template-columns:1.4fr 1fr 1fr}.full{grid-column:auto}.formgrid .titlefield{grid-column:1/-1}}
 </style>
 </head>
@@ -69,6 +70,11 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
     <button class="filter" id="maintenanceNav">🔧 Manutenções</button>
     <button class="filter" id="calibrationNav">🧪 Calibrações e ensaios</button>
   </div>
+
+  <section class="reminder-panel hidden" id="recordReminderPanel" aria-live="polite">
+    <h2>🔔 Avisos de manutenção e calibração</h2>
+    <div id="recordReminderList"></div>
+  </section>
 
   <section class="panel hidden" id="maintenancePanel">
     <div class="panelhead"><div><h2>🔧 Manutenções</h2><div class="sub">Registo independente; podes configurar avisos 1 ou 2 meses antes da data</div></div><button class="secondary" id="closeMaintenance">Fechar</button></div>
@@ -366,9 +372,24 @@ function recordReminderItems(){
 function checkRecordNotifications(){
   const items=recordReminderItems();
   const today=new Date().toISOString().slice(0,10);
-  const active=items.filter(x=>x.due>=today);
-  if(active.length){
-    cloudStatus((cloudUser?'Sincronizado com a nuvem':'Dados guardados neste dispositivo')+' · '+active.length+' aviso(s) de manutenção/calibração');
+  const active=items.filter(x=>x.due>=today).sort((a,b)=>a.due.localeCompare(b.due));
+  const panel=$("recordReminderPanel"), list=$("recordReminderList");
+  if(panel&&list){
+    list.innerHTML='';
+    if(active.length){
+      panel.classList.remove('hidden');
+      active.forEach(item=>{
+        const row=document.createElement('div');row.className='reminder-item';
+        const title=document.createElement('strong');title.textContent=item.kind+' · '+item.title;
+        const detail=document.createElement('span');
+        const days=Math.ceil((new Date(item.due+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);
+        const timing=days===0?'A data é hoje':days===1?'Falta 1 dia':`Faltam ${days} dias`;
+        detail.textContent='Data: '+dateLabel(item.due)+' · '+timing+' · aviso de '+item.months+' '+(item.months===1?'mês':'meses')+' antes';
+        row.append(title,detail);list.append(row);
+      });
+    }else{
+      panel.classList.add('hidden');
+    }
   }
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   let sent={};try{sent=JSON.parse(localStorage.getItem('restradasRecordNoticesV1')||'{}')}catch(e){}
