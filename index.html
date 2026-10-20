@@ -35,7 +35,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 .brandline{display:flex;align-items:center;gap:12px;margin:0 0 8px}
 .brandline img{display:block;width:150px;max-width:48%;height:auto;object-fit:contain;background:#fff;border-radius:7px;padding:4px}
 .brandby{font-size:11px;color:#dbe9e2;opacity:.95;font-weight:650}
-.photo-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.photo-thumb{width:86px;height:86px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.photo-count{font-size:12px;color:var(--muted);margin-top:6px}
+.photo-wrap{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.photo-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.photo-thumb{width:86px;height:86px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.photo-count{font-size:12px;color:var(--muted);margin-top:6px}
 </style>
 </head>
 <body>
@@ -106,6 +106,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="maintenanceStatus">Estado</label><select id="maintenanceStatus"><option>Prevista</option><option>Em curso</option><option>Realizada</option><option>Adiada</option></select></div>
         <div><label for="maintenanceOwner">Responsável</label><input id="maintenanceOwner" maxlength="80"></div>
         <div class="full"><label for="maintenanceNotes">Observações / trabalhos efetuados</label><textarea id="maintenanceNotes" maxlength="1000" placeholder="Peças, anomalias, custos, fornecedor..."></textarea></div>
+      <div class="full"><label for="maintenancePhotos">Fotografias da manutenção (máximo 4)</label><input id="maintenancePhotos" type="file" accept="image/*" multiple><div class="sub">Escolhe imagens da biblioteca ou tira fotografias.</div><div id="maintenancePhotoPreview" class="photo-preview"></div></div>
       </div>
       <button class="primary" type="submit" id="maintenanceSave">Guardar manutenção</button>
       <button class="secondary hidden" type="button" id="maintenanceCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
@@ -128,6 +129,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="calibrationStatus">Resultado / estado</label><select id="calibrationStatus"><option>Conforme</option><option>Não conforme</option><option>Pendente</option><option>Agendado</option><option>Não aplicável</option></select></div>
         <div><label for="calibrationOwner">Responsável / entidade</label><input id="calibrationOwner" maxlength="100" placeholder="Laboratório ou responsável"></div>
         <div class="full"><label for="calibrationNotes">Observações / referência do relatório</label><textarea id="calibrationNotes" maxlength="1000" placeholder="N.º certificado, resultados, ações necessárias..."></textarea></div>
+      <div class="full"><label for="calibrationPhotos">Fotografias / comprovativos visuais (máximo 4)</label><input id="calibrationPhotos" type="file" accept="image/*" multiple><div class="sub">Escolhe imagens da biblioteca ou tira fotografias do equipamento, certificado ou ensaio.</div><div id="calibrationPhotoPreview" class="photo-preview"></div></div>
       </div>
       <button class="primary" type="submit" id="calibrationSave">Guardar registo</button>
       <button class="secondary hidden" type="button" id="calibrationCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
@@ -154,7 +156,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="breakdownStopped">Equipamento parado?</label><select id="breakdownStopped"><option value="Sim">Sim</option><option value="Não">Não</option></select></div>
         <div><label for="breakdownHours">Horas de paragem</label><input id="breakdownHours" type="number" min="0" step="0.25" value="0" placeholder="Ex.: 2,5"></div>
         <div class="full"><label for="breakdownNotes">Detalhes / ações efetuadas</label><textarea id="breakdownNotes" maxlength="1500" placeholder="Sintomas, causa provável, intervenção, peças ou próximos passos…"></textarea></div>
-        <div class="full"><label for="breakdownPhotos">Fotografias da avaria (máximo 4)</label><input id="breakdownPhotos" type="file" accept="image/*" capture="environment" multiple><div class="sub">Podes tirar fotografias no iPhone ou selecionar imagens. São reduzidas para ocupar menos espaço.</div><div id="breakdownPhotoPreview" class="photo-preview"></div></div>
+        <div class="full"><label for="breakdownPhotos">Fotografias da avaria (máximo 4)</label><input id="breakdownPhotos" type="file" accept="image/*" multiple><div class="sub">Escolhe fotografias da biblioteca ou tira uma nova, conforme as opções do dispositivo. São reduzidas para ocupar menos espaço.</div><div id="breakdownPhotoPreview" class="photo-preview"></div></div>
       </div>
       <button class="primary" id="breakdownSave" type="submit">Guardar avaria</button>
       <button class="secondary hidden" type="button" id="breakdownCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
@@ -178,6 +180,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="taskDate">Prazo</label><input id="taskDate" type="date"></div>
         <div><label for="taskOwner">Responsável (opcional)</label><input id="taskOwner" maxlength="80" placeholder="Nome do responsável"></div>
         <div class="full"><label for="taskNotes">Notas (opcional)</label><textarea id="taskNotes" maxlength="1000" placeholder="Detalhes, pessoa a contactar, material, etc."></textarea></div>
+      <div class="full"><label for="taskPhotos">Fotografias ou documentos visuais (máximo 4 imagens)</label><input id="taskPhotos" type="file" accept="image/*" multiple><div class="sub">Podes escolher imagens da biblioteca ou tirar fotografias. Até 4 imagens por registo.</div><div id="taskPhotoPreview" class="photo-preview"></div></div>
       </div>
       <button class="primary" id="saveBtn" type="submit">Adicionar tarefa</button>
     </form>
@@ -289,6 +292,7 @@ function render(){
   content.append(chips);
   if(t.done&&t.completedAt){const completed=document.createElement('div');completed.className='sub';completed.style.marginTop='8px';completed.textContent='Concluída em '+new Date(t.completedAt).toLocaleDateString('pt-PT');content.append(completed)}
   if(t.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=t.notes;content.append(notes)}
+  appendRecordPhotos(content,t.photos,'Fotografia da tarefa');
   const actions=document.createElement('div');actions.className='taskactions';
   const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>editTask(t.id);
   const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=t.done?'Reabrir':'Concluir';toggle.onclick=()=>{t.done=!t.done;t.completedAt=t.done?Date.now():null;persist()};
@@ -306,8 +310,8 @@ function renderTodayPanel(){
   if(!items.length){list.innerHTML='<div class="today-empty">Não tens tarefas, manutenções ou calibrações vencidas/previstas para hoje.</div>';return}
   items.forEach(item=>{const row=document.createElement('div');row.className='today-item '+(item.overdue?'overdue':item.kind==='task'?'due':'record');const mark=document.createElement('span');mark.className='today-mark';mark.textContent=item.overdue?'⚠️':item.kind==='maintenance'?'🔧':item.kind==='calibration'?'🧪':'•';const wrap=document.createElement('div');wrap.style.minWidth='0';const title=document.createElement('div');title.textContent=item.title;const meta=document.createElement('div');meta.className='sub';meta.style.marginTop='4px';meta.textContent=(item.kind==='maintenance'?'Manutenção':item.kind==='calibration'?'Calibração/ensaio':'Tarefa')+' · '+item.area+' · '+(item.overdue?'Em atraso':'Para hoje');wrap.append(title,meta);row.append(mark,wrap);list.append(row)});
 }
-function resetForm(){editingId=null;$('taskForm').reset();$('taskArea').value=activeFilter==='Betão'||activeFilter==='Pedreira'||activeFilter==='Geral'?activeFilter:'Betão';$('taskPriority').value='Média';$('formHeading').textContent='+ Nova tarefa';$('saveBtn').textContent='Adicionar tarefa';$('cancelEdit').classList.add('hidden')}
-function editTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;$('taskTitle').value=t.title;$('taskArea').value=t.area;$('taskPriority').value=t.priority;$('taskDate').value=t.due||'';$('taskOwner').value=t.owner||'';$('taskNotes').value=t.notes||'';$('formHeading').textContent='Editar tarefa';$('saveBtn').textContent='Guardar alterações';$('cancelEdit').classList.remove('hidden');$('formPanel').scrollIntoView({behavior:'smooth',block:'start'});$('taskTitle').focus()}
+function resetForm(){editingId=null;$('taskForm').reset();setRecordPhotos('task',[]);$('taskArea').value=activeFilter==='Betão'||activeFilter==='Pedreira'||activeFilter==='Geral'?activeFilter:'Betão';$('taskPriority').value='Média';$('formHeading').textContent='+ Nova tarefa';$('saveBtn').textContent='Adicionar tarefa';$('cancelEdit').classList.add('hidden')}
+function editTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;$('taskTitle').value=t.title;$('taskArea').value=t.area;$('taskPriority').value=t.priority;$('taskDate').value=t.due||'';$('taskOwner').value=t.owner||'';$('taskNotes').value=t.notes||'';setRecordPhotos('task',t.photos||[]);$('formHeading').textContent='Editar tarefa';$('saveBtn').textContent='Guardar alterações';$('cancelEdit').classList.remove('hidden');$('formPanel').scrollIntoView({behavior:'smooth',block:'start'});$('taskTitle').focus()}
 $('taskForm').addEventListener('submit',e=>{e.preventDefault();const title=$('taskTitle').value.trim();if(!title)return;const data={title,area:$('taskArea').value,priority:$('taskPriority').value,due:$('taskDate').value,owner:$('taskOwner').value.trim(),notes:$('taskNotes').value.trim()};if(editingId){const t=tasks.find(x=>x.id===editingId);Object.assign(t,data)}else tasks.push({...data,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),done:false,created:Date.now()});persist();resetForm()});
 $('cancelEdit').onclick=resetForm;
 $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;activeFilter=b.dataset.filter;document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===b));render()});
@@ -536,6 +540,7 @@ function renderRecords(kind){
     values.forEach((v)=>{const chip=document.createElement('span');chip.className='chip'+(/Não conforme|Adiada/.test(v)?' high':'');if(v===r.area){chip.classList.add(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro')}if((isM&&r.status!=='Realizada'&&v==='Data · '+dateLabel(r.date))||(!isM&&r.status!=='Não aplicável'&&v==='Próxima · '+dateLabel(r.next))){const today=localToday(),days=Math.ceil((new Date(reminderDate+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);chip.classList.add(days<0?'next-overdue':days<=30?'next-soon':'next-date')}chip.textContent=v;chips.append(chip)});
     content.append(chips);
     if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
+    appendRecordPhotos(content,r.photos,isM?'Fotografia da manutenção':'Fotografia da calibração/ensaio');
     const actions=document.createElement('div');actions.className='taskactions';
     const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>fillRecordForm(kind,r);
     actions.append(edit);content.append(actions);el.append(content);list.append(el);
@@ -546,13 +551,14 @@ function fillRecordForm(kind,r){
   const fields=isM?['title','area','equipment','date','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];
   $(prefix+'Id').value=r.id;
   fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));if(el)el.value=(r[f]!==undefined&&r[f]!==null)?String(r[f]):(f==='reminder'?'0':'')});
+  setRecordPhotos(prefix,r.photos||[]);
   $(prefix+'Save').textContent='Guardar alterações';
   $(prefix+'Cancel').classList.remove('hidden');
   $(prefix+'Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function resetRecordForm(kind){
   const isM=kind==='maintenance', prefix=isM?'maintenance':'calibration';
-  $(prefix+'Form').reset();$(prefix+'Id').value='';
+  $(prefix+'Form').reset();setRecordPhotos(prefix,[]);$(prefix+'Id').value='';
   $(prefix+'Save').textContent=isM?'Guardar manutenção':'Guardar registo';
   $(prefix+'Cancel').classList.add('hidden');
 }
@@ -569,6 +575,17 @@ function setupRecordForm(kind){
   });
   $(prefix+'Cancel').onclick=()=>resetRecordForm(kind);
 }
+// Fotografias em tarefas, manutenções e calibrações/ensaios
+const recordPhotoState={task:[],maintenance:[],calibration:[]};
+function setRecordPhotos(kind,photos){recordPhotoState[kind]=(Array.isArray(photos)?photos:[]).slice(0,4);const input=$(kind+'Photos');if(input)input.value='';renderRecordPhotoPreview(kind)}
+function renderRecordPhotoPreview(kind){const box=$(kind+'PhotoPreview');if(!box)return;box.innerHTML='';(recordPhotoState[kind]||[]).forEach((src,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=src;img.className='photo-thumb';img.alt='Fotografia existente '+(i+1);wrap.append(img);const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Remover';del.onclick=()=>{recordPhotoState[kind].splice(i,1);renderRecordPhotoPreview(kind)};wrap.append(del);box.append(wrap)});const files=Array.from($(kind+'Photos')?.files||[]);files.slice(0,Math.max(0,4-recordPhotoState[kind].length)).forEach(file=>{const img=document.createElement('img');img.className='photo-thumb';img.alt='Nova fotografia';img.src=URL.createObjectURL(file);box.append(img)})}
+async function readRecordPhotos(kind){const input=$(kind+'Photos');const files=Array.from(input?.files||[]);const available=Math.max(0,4-recordPhotoState[kind].length);if(files.length>available)throw new Error('Podes anexar no máximo 4 imagens por registo.');const added=await Promise.all(files.map(compressBreakdownPhoto));return [...recordPhotoState[kind],...added].slice(0,4)}
+function appendRecordPhotos(container,photos,label){if(!Array.isArray(photos)||!photos.length)return;const box=document.createElement('div');box.className='photo-preview';photos.forEach((src,i)=>{const img=document.createElement('img');img.src=src;img.className='photo-thumb';img.alt=label+' '+(i+1);img.loading='lazy';img.title='Abrir fotografia';img.style.cursor='zoom-in';img.onclick=()=>{const w=window.open();if(w){w.document.write('<img src="'+src+'" style="max-width:100%;height:auto">');w.document.title=label}};box.append(img)});container.append(box)}
+['task','maintenance','calibration'].forEach(kind=>{const input=$(kind+'Photos');if(input)input.addEventListener('change',()=>{const count=recordPhotoState[kind].length+(input.files?.length||0);if(count>4){alert('Podes associar até 4 imagens por registo.');input.value=''}renderRecordPhotoPreview(kind)});});
+// Interceptar o envio para comprimir e guardar também as fotografias, sem alterar os restantes campos.
+$('taskForm').addEventListener('submit',async e=>{e.preventDefault();e.stopImmediatePropagation();const btn=$('saveBtn');btn.disabled=true;btn.textContent='A preparar imagens…';try{const title=$('taskTitle').value.trim();if(!title)return;const photos=await readRecordPhotos('task');const data={title,area:$('taskArea').value,priority:$('taskPriority').value,due:$('taskDate').value,owner:$('taskOwner').value.trim(),notes:$('taskNotes').value.trim(),photos};if(editingId){const t=tasks.find(x=>x.id===editingId);if(t)Object.assign(t,data)}else tasks.push({...data,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),done:false,created:Date.now()});persist();resetForm()}catch(err){alert(err.message||'Não foi possível guardar as imagens. Experimenta imagens mais pequenas.')}finally{btn.disabled=false;btn.textContent=editingId?'Guardar alterações':'Adicionar tarefa'}},true);
+['maintenance','calibration'].forEach(kind=>$(kind+'Form').addEventListener('submit',async e=>{e.preventDefault();e.stopImmediatePropagation();const isM=kind==='maintenance',prefix=kind,btn=$(prefix+'Save');btn.disabled=true;btn.textContent='A preparar imagens…';try{const fields=isM?['title','area','equipment','date','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];const id=$(prefix+'Id').value||Date.now().toString(36)+Math.random().toString(36).slice(2,7);const old=(isM?maintenanceRecords:calibrationRecords).find(x=>x.id===id);const r={id,photos:await readRecordPhotos(kind)};fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));r[f]=el?el.value.trim():''});const arr=isM?maintenanceRecords:calibrationRecords,idx=arr.findIndex(x=>x.id===id);if(idx>=0)arr[idx]=r;else arr.push(r);saveRecords(kind);resetRecordForm(kind)}catch(err){alert(err.message||'Não foi possível guardar as imagens. Experimenta imagens mais pequenas.')}finally{btn.disabled=false;btn.textContent=isM?'Guardar manutenção':'Guardar registo'}},true));
+
 // Módulo independente de avarias
 const BREAKDOWN_KEY='restradasAvariasV1';
 let breakdownRecords=[], breakdownFilter='Todas', editingBreakdownId=null;
