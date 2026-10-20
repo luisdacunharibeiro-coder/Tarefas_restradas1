@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#173b32">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Tarefas Trabalho">
+<meta name="apple-mobile-web-app-title" content="Restradas Gestão Operacional">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
-<title>Tarefas de Trabalho</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%23173b32%22/%3E%3Cpath d=%22M42 146V46h48c28 0 44 14 44 38 0 18-10 30-26 35l30 27h-34l-27-25H70v25zm28-49h19c11 0 17-4 17-13s-6-13-17-13H70z%22 fill=%22%2396d6a9%22/%3E%3Ctext x=%22183%22 y=%22180%22 font-size=%2215%22 text-anchor=%22end%22 fill=%22white%22 font-family=%22Arial%22%3ELR%3C/text%3E%3C/svg%3E">
+<title>Restradas | Gestão Operacional</title>
 <style>
 :root{--green:#173b32;--green2:#245849;--mint:#e8f3ed;--bg:#f4f6f5;--ink:#18231f;--muted:#68756f;--line:#e0e7e3;--white:#fff;--orange:#a95513;--red:#b42318}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
@@ -29,7 +29,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 .searchrow{display:flex;gap:8px;align-items:center;margin-bottom:12px}.searchrow input{background:white}
 .tasklist{display:flex;flex-direction:column;gap:10px}.task{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;min-width:0}.task.done{opacity:.68}.task.done .tasktitle{text-decoration:line-through}.task.record{grid-template-columns:minmax(0,1fr)}.task.record .tasktop{min-width:0}.task.record .tasktitle{min-width:0;overflow-wrap:anywhere}
 .check{width:22px;height:22px;accent-color:var(--green);margin-top:2px}.tasktop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.tasktitle{font-size:15px;font-weight:750;line-height:1.35;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{font-size:11px;padding:5px 8px;border-radius:999px;background:#eef2ef;color:#4c5a53;font-weight:700}.chip.area{background:#e7f3ed;color:#245849}.chip.high{background:#fde9e7;color:#a1251d}.chip.medium{background:#fff0d9;color:#8a4b0a}.chip.overdue{background:#b42318;color:white}.tasknotes{font-size:13px;color:#56645d;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}.taskactions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}.taskactions button{font-size:12px;padding:7px 9px}.empty{text-align:center;color:var(--muted);padding:28px 12px;border:1px dashed #cbd6d0;border-radius:15px;background:#ffffff99}.empty strong{display:block;color:var(--ink);margin-bottom:5px}.sectiontitle{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 12px}.sectiontitle h2{font-size:18px}.hidden{display:none!important}.footer{font-size:11px;color:var(--muted);text-align:center;padding:10px 18px}.danger{color:var(--red)}.iconbtn{border:0;background:transparent;color:#6b7771;padding:2px 4px;font-size:20px}
-.reminder-panel{background:#fff8e8;border:1px solid #f0d7a7;border-radius:16px;padding:14px;margin:0 0 14px}.reminder-panel h2{font-size:16px;margin:0 0 8px;color:#78420c}.reminder-item{padding:9px 0;border-top:1px solid #f0dfc0;font-size:13px}.reminder-item:first-of-type{border-top:0}.reminder-item strong{display:block;color:#18231f}.reminder-empty{font-size:13px;color:var(--muted)}
+.today-panel{background:#edf7f0;border:2px solid #a7d8b8;border-radius:18px;padding:16px;margin:0 0 14px;box-shadow:0 4px 16px #173b3212}.today-panel h2{font-size:19px;color:#173b32;margin:0}.today-panel .today-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.today-item{background:white;border:1px solid #d6e9dc;border-radius:12px;padding:10px 12px;margin-top:8px;font-weight:750;font-size:14px;display:flex;gap:9px;align-items:flex-start}.today-item .today-mark{font-size:18px;line-height:1}.today-item.overdue{border-left:5px solid #b42318}.today-item.due{border-left:5px solid #d97706}.today-item.record{border-left:5px solid #6d28d9}.today-empty{font-size:13px;color:#50675a;padding:8px 0}.breakdown-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.breakdown-stat{background:#f2f5f3;border-radius:12px;padding:10px}.breakdown-stat strong{display:block;font-size:20px}.breakdown-stat span{font-size:11px;color:#68756f}.chip.next-date{background:#eee7ff;color:#54259a}.chip.next-soon{background:#fff0d9;color:#8a4b0a}.chip.next-overdue{background:#b42318;color:#fff}.area-pedreira{background:#e7f3ed!important;color:#245849!important}.area-betao{background:#e5efff!important;color:#234e91!important}.area-outro{background:#f3e8ff!important;color:#6b21a8!important}.reminder-panel{background:#fff8e8;border:1px solid #f0d7a7;border-radius:16px;padding:14px;margin:0 0 14px}.reminder-panel h2{font-size:16px;margin:0 0 8px;color:#78420c}.reminder-item{padding:9px 0;border-top:1px solid #f0dfc0;font-size:13px}.reminder-item:first-of-type{border-top:0}.reminder-item strong{display:block;color:#18231f}.reminder-empty{font-size:13px;color:var(--muted)}
 @media(min-width:600px){main{padding:20px}.stats{max-width:460px}.formgrid{grid-template-columns:1.4fr 1fr 1fr}.full{grid-column:auto}.formgrid .titlefield{grid-column:1/-1}}
 </style>
 </head>
@@ -48,7 +48,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 </section>
 <header>
   <div class="topline" style="flex-wrap:wrap"><div class="eyebrow">Organização diária</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button id="exportBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬇ Exportar dados</button><button id="importBtn" class="secondary" style="background:#ffffff18;border-color:#ffffff55;color:white">⬆ Importar dados</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar ficheiro de cópia de segurança"></div></div>
-  <h1>As minhas tarefas</h1><p>Betão · Pedreira · Trabalho em dia</p>
+  <h1>Restradas | Gestão Operacional</h1><p>Betão · Pedreira · Organização diária</p>
   <div class="stats">
     <div class="stat"><strong id="pendingCount">0</strong><span>Pendentes</span></div>
     <div class="stat"><strong id="todayCount">0</strong><span>Para hoje</span></div>
@@ -69,7 +69,19 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
     <button class="filter" id="weeklyBtn">📅 Resumo semanal</button>
     <button class="filter" id="maintenanceNav">🔧 Manutenções</button>
     <button class="filter" id="calibrationNav">🧪 Calibrações e ensaios</button>
+    <button class="filter" id="breakdownNav">🛠️ Avarias</button>
   </div>
+
+  <section class="today-panel" id="todayPanel" aria-live="polite">
+    <div class="today-heading"><h2>📌 Para tratar hoje</h2><span class="chip area" id="todayTotal">0 tarefas</span></div>
+    <div id="todayList"><div class="today-empty">A carregar tarefas…</div></div>
+  </section>
+
+  <section class="panel" id="homeBreakdownSummary" style="padding:14px;margin-bottom:14px">
+    <div class="panelhead" style="margin-bottom:4px"><div><h2>🛠️ Avarias em aberto</h2><div class="sub">Resumo rápido por área</div></div><button class="secondary" type="button" id="openBreakdownsFromHome">Ver avarias</button></div>
+    <div id="homeBreakdownCounts" class="breakdown-summary" style="margin-bottom:0"></div>
+    <div id="homeBreakdownAlert" class="sub" style="margin-top:8px"></div>
+  </section>
 
   <section class="reminder-panel hidden" id="recordReminderPanel" aria-live="polite">
     <h2>🔔 Avisos de manutenção e calibração</h2>
@@ -119,6 +131,33 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
     <div class="tasklist" id="calibrationList"></div>
   </section>
 
+  <section class="panel hidden" id="breakdownPanel">
+    <div class="panelhead"><div><h2>🛠️ Avarias</h2><div class="sub">Histórico por equipamento, estado da avaria e tempo de paragem</div></div><button class="secondary" id="closeBreakdown">Fechar</button></div>
+    <div class="breakdown-summary" id="breakdownSummary"></div>
+    <div class="toolbar" id="breakdownFilters" style="padding-bottom:4px">
+      <button class="filter active" data-breakdown-filter="Todas">Todas</button><button class="filter" data-breakdown-filter="Pedreira">⛏️ Pedreira</button><button class="filter" data-breakdown-filter="Betão">🏗️ Central de Betão</button><button class="filter" data-breakdown-filter="Outro">📋 Outro</button>
+    </div>
+    <form id="breakdownForm">
+      <input id="breakdownId" type="hidden">
+      <div class="formgrid">
+        <div class="full"><label for="breakdownTitle">Avaria / descrição curta *</label><input id="breakdownTitle" required maxlength="140" placeholder="Ex.: Fuga hidráulica na giratória"></div>
+        <div><label for="breakdownArea">Área *</label><select id="breakdownArea"><option>Pedreira</option><option>Betão</option><option>Outro</option></select></div>
+        <div><label for="breakdownEquipment">Equipamento *</label><input id="breakdownEquipment" required maxlength="100" placeholder="Ex.: CAT 345 / Central de betão"></div>
+        <div><label for="breakdownDate">Data da avaria *</label><input id="breakdownDate" type="date" required></div>
+        <div><label for="breakdownSeverity">Gravidade</label><select id="breakdownSeverity"><option>Crítica</option><option>Alta</option><option selected>Média</option><option>Baixa</option></select></div>
+        <div><label for="breakdownStatus">Estado</label><select id="breakdownStatus"><option>Por resolver</option><option>Em reparação</option><option>Resolvida</option></select></div>
+        <div><label for="breakdownStopped">Equipamento parado?</label><select id="breakdownStopped"><option value="Sim">Sim</option><option value="Não">Não</option></select></div>
+        <div><label for="breakdownHours">Horas de paragem</label><input id="breakdownHours" type="number" min="0" step="0.25" value="0" placeholder="Ex.: 2,5"></div>
+        <div class="full"><label for="breakdownNotes">Detalhes / ações efetuadas</label><textarea id="breakdownNotes" maxlength="1500" placeholder="Sintomas, causa provável, intervenção, peças ou próximos passos…"></textarea></div>
+      </div>
+      <button class="primary" id="breakdownSave" type="submit">Guardar avaria</button>
+      <button class="secondary hidden" type="button" id="breakdownCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
+    </form>
+    <div class="sectiontitle" style="margin-top:20px"><h2>Histórico de avarias</h2><span class="sub" id="breakdownCount">0 registos</span></div>
+    <div class="searchrow"><input id="breakdownSearch" type="search" placeholder="Pesquisar equipamento ou avaria…" aria-label="Pesquisar avarias"></div>
+    <div class="tasklist" id="breakdownList"></div>
+  </section>
+
   <section class="panel hidden" id="weeklyPanel">
     <div class="panelhead"><div><h2>Resumo semanal</h2><div class="sub">Estado das tarefas nos últimos 7 dias</div></div><button id="closeWeekly" class="secondary">Fechar</button></div>
     <div id="weeklySummary"></div>
@@ -140,7 +179,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
   <div class="sectiontitle"><h2 id="listHeading">Tarefas pendentes</h2><span class="sub" id="resultCount">0 tarefas</span></div>
   <div class="searchrow"><input id="search" type="search" placeholder="Pesquisar tarefas..." aria-label="Pesquisar tarefas"><select id="sortBy" aria-label="Ordenar" style="max-width:145px"><option value="priority">Prioridade</option><option value="date">Prazo</option><option value="newest">Mais recentes</option></select></div>
   <div class="tasklist" id="taskList"></div>
-  <div class="footer">Os dados ficam guardados neste dispositivo e neste navegador. Usa “Exportar dados” para guardar uma cópia de segurança e “Importar dados” noutro dispositivo para recuperar tarefas, manutenções e calibrações/ensaios. Os avisos são verificados quando a aplicação está aberta; lembretes fiáveis em segundo plano exigem uma versão com serviço de notificações.</div>
+  <div class="footer">Os dados ficam guardados neste dispositivo e, quando inicias sessão, sincronizados com a tua conta. Usa “Exportar dados” para guardar uma cópia de segurança. Os avisos são verificados quando a aplicação está aberta. <br><strong>Desenvolvido por Luís Ribeiro</strong></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -149,15 +188,17 @@ const SUPABASE_PUBLISHABLE_KEY="sb_publishable_c8mVy4vQ2fJGSL2UufyAwg_64JlEOMj";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let cloudUser=null, cloudReady=false, cloudSaveTimer=null, cloudWriteChain=Promise.resolve();
 const cloudStatus=(message)=>{const el=document.getElementById("cloudStatus");if(el)el.textContent=message};
-function currentBackup(){return {tasks,maintenanceRecords,calibrationRecords};}
+function currentBackup(){return {tasks,maintenanceRecords,calibrationRecords,breakdownRecords};}
 function applyBackup(data){
   tasks=Array.isArray(data.tasks)?data.tasks:[];
   maintenanceRecords=Array.isArray(data.maintenanceRecords)?data.maintenanceRecords:[];
   calibrationRecords=Array.isArray(data.calibrationRecords)?data.calibrationRecords:[];
+  breakdownRecords=Array.isArray(data.breakdownRecords)?data.breakdownRecords:[];
   localStorage.setItem(KEY,JSON.stringify(tasks));
   localStorage.setItem(MAINT_KEY,JSON.stringify(maintenanceRecords));
   localStorage.setItem(CAL_KEY,JSON.stringify(calibrationRecords));
-  render();renderRecords("maintenance");renderRecords("calibration");
+  localStorage.setItem(BREAKDOWN_KEY,JSON.stringify(breakdownRecords));
+  render();renderRecords("maintenance");renderRecords("calibration");renderBreakdowns();
 }
 function queueCloudSave(){
   if(!cloudUser||!cloudReady)return;
@@ -178,7 +219,7 @@ async function connectCloudSession(user){
   cloudStatus("A carregar os dados da nuvem…");
   const {data,error}=await supabaseClient.from("tarefas_restradas_dados").select("dados").eq("user_id",user.id).maybeSingle();
   if(error){cloudStatus("Não foi possível ler os dados: "+error.message);return;}
-  const localHasData=tasks.length>0||maintenanceRecords.length>0||calibrationRecords.length>0;
+  const localHasData=tasks.length>0||maintenanceRecords.length>0||calibrationRecords.length>0||breakdownRecords.length>0;
   if(data&&data.dados&&typeof data.dados==="object"){
     applyBackup(data.dados);
     cloudReady=true;
@@ -189,7 +230,7 @@ async function connectCloudSession(user){
       if(confirm("Ainda não existem dados na nuvem. Queres copiar para o Supabase os dados que estão guardados neste dispositivo?")){
         queueCloudSave();cloudStatus("A enviar os dados deste dispositivo para a nuvem…");
       }else{
-        applyBackup({tasks:[],maintenanceRecords:[],calibrationRecords:[]});
+        applyBackup({tasks:[],maintenanceRecords:[],calibrationRecords:[],breakdownRecords:[]});
         cloudStatus("Ligado. A nuvem está vazia; não foram enviados dados locais.");
       }
     }else{
@@ -205,13 +246,13 @@ const priorityRank={'Alta':0,'Média':1,'Baixa':2};
 function load(){try{tasks=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(tasks))tasks=[]}catch(e){tasks=[]}}
 function persist(){localStorage.setItem(KEY,JSON.stringify(tasks));render();queueCloudSave()}
 function dateLabel(s){if(!s)return 'Sem prazo';const d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'})}
-function isOverdue(t){return t.due&&!t.done&&t.due<new Date().toISOString().slice(0,10)}
+function isOverdue(t){return t.due&&!t.done&&t.due<localToday()}
 function render(){
- const pending=tasks.filter(t=>!t.done), today=new Date().toISOString().slice(0,10);
+ const pending=tasks.filter(t=>!t.done), today=localToday();
  $('pendingCount').textContent=pending.length;
  $('todayCount').textContent=pending.filter(t=>t.due===today).length;
  $('doneCount').textContent=tasks.filter(t=>t.done).length;
- $('overdueCount').textContent=pending.filter(t=>t.due&&t.due<new Date().toISOString().slice(0,10)).length;
+ $('overdueCount').textContent=pending.filter(t=>t.due&&t.due<localToday()).length;
  const q=$('search').value.trim().toLocaleLowerCase('pt-PT');
  let shown=tasks.filter(t=>{
    if(activeFilter==='Concluídas'&&!t.done)return false;
@@ -248,6 +289,17 @@ function render(){
   actions.append(edit,toggle);content.append(actions);el.append(checkbox,content);list.append(el);
  }
 }
+function localToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function renderTodayPanel(){
+  const today=localToday(), items=[];
+  tasks.filter(t=>!t.done&&t.due&&t.due<=today).forEach(t=>items.push({title:t.title,area:t.area,date:t.due,kind:'task',overdue:t.due<today,priority:t.priority}));
+  maintenanceRecords.filter(r=>r.date&&r.date<=today&&r.status!=='Realizada').forEach(r=>items.push({title:r.title,area:r.area,date:r.date,kind:'maintenance',overdue:r.date<today}));
+  calibrationRecords.filter(r=>r.next&&r.next<=today&&r.status!=='Não aplicável').forEach(r=>items.push({title:r.title,area:r.area,date:r.next,kind:'calibration',overdue:r.next<today}));
+  items.sort((a,b)=>Number(b.overdue)-Number(a.overdue)||a.date.localeCompare(b.date));
+  const list=$('todayList');list.innerHTML='';$('todayTotal').textContent=items.length+(items.length===1?' item':' itens');
+  if(!items.length){list.innerHTML='<div class="today-empty">Não tens tarefas, manutenções ou calibrações vencidas/previstas para hoje.</div>';return}
+  items.forEach(item=>{const row=document.createElement('div');row.className='today-item '+(item.overdue?'overdue':item.kind==='task'?'due':'record');const mark=document.createElement('span');mark.className='today-mark';mark.textContent=item.overdue?'⚠️':item.kind==='maintenance'?'🔧':item.kind==='calibration'?'🧪':'•';const wrap=document.createElement('div');wrap.style.minWidth='0';const title=document.createElement('div');title.textContent=item.title;const meta=document.createElement('div');meta.className='sub';meta.style.marginTop='4px';meta.textContent=(item.kind==='maintenance'?'Manutenção':item.kind==='calibration'?'Calibração/ensaio':'Tarefa')+' · '+item.area+' · '+(item.overdue?'Em atraso':'Para hoje');wrap.append(title,meta);row.append(mark,wrap);list.append(row)});
+}
 function resetForm(){editingId=null;$('taskForm').reset();$('taskArea').value=activeFilter==='Betão'||activeFilter==='Pedreira'||activeFilter==='Geral'?activeFilter:'Betão';$('taskPriority').value='Média';$('formHeading').textContent='+ Nova tarefa';$('saveBtn').textContent='Adicionar tarefa';$('cancelEdit').classList.add('hidden')}
 function editTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;$('taskTitle').value=t.title;$('taskArea').value=t.area;$('taskPriority').value=t.priority;$('taskDate').value=t.due||'';$('taskOwner').value=t.owner||'';$('taskNotes').value=t.notes||'';$('formHeading').textContent='Editar tarefa';$('saveBtn').textContent='Guardar alterações';$('cancelEdit').classList.remove('hidden');$('formPanel').scrollIntoView({behavior:'smooth',block:'start'});$('taskTitle').focus()}
 $('taskForm').addEventListener('submit',e=>{e.preventDefault();const title=$('taskTitle').value.trim();if(!title)return;const data={title,area:$('taskArea').value,priority:$('taskPriority').value,due:$('taskDate').value,owner:$('taskOwner').value.trim(),notes:$('taskNotes').value.trim()};if(editingId){const t=tasks.find(x=>x.id===editingId);Object.assign(t,data)}else tasks.push({...data,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),done:false,created:Date.now()});persist();resetForm()});
@@ -257,17 +309,18 @@ $('search').addEventListener('input',render);$('sortBy').addEventListener('chang
 function exportBackup(){
   const backup={
     app:'Tarefas de Trabalho — Restradas',
-    version:2,
+    version:3,
     exportedAt:new Date().toISOString(),
     tasks,
     maintenanceRecords,
-    calibrationRecords
+    calibrationRecords,
+    breakdownRecords
   };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download='backup-tarefas-restradas-'+new Date().toISOString().slice(0,10)+'.json';
+  a.download='backup-tarefas-restradas-'+localToday()+'.json';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -288,6 +341,7 @@ $('importFile').addEventListener('change',async e=>{
       throw new Error('A lista de calibrações/ensaios do ficheiro não é válida.');
     }
     const parts=[parsed.tasks.length+' tarefa(s)'];
+    if(Array.isArray(parsed.breakdownRecords))parts.push(parsed.breakdownRecords.length+' avaria(s)');
     if(Array.isArray(parsed.maintenanceRecords))parts.push(parsed.maintenanceRecords.length+' manutenção(ões)');
     if(Array.isArray(parsed.calibrationRecords))parts.push(parsed.calibrationRecords.length+' registo(s) de calibração/ensaio');
     const detail=parts.join(', ');
@@ -302,10 +356,11 @@ $('importFile').addEventListener('change',async e=>{
       calibrationRecords=parsed.calibrationRecords;
       localStorage.setItem(CAL_KEY,JSON.stringify(calibrationRecords));
     }
+    if(Array.isArray(parsed.breakdownRecords)){breakdownRecords=parsed.breakdownRecords;localStorage.setItem(BREAKDOWN_KEY,JSON.stringify(breakdownRecords));}
     resetForm();
     resetRecordForm('maintenance');
-    resetRecordForm('calibration');
-    render();renderRecords('maintenance');renderRecords('calibration');queueCloudSave();
+    resetRecordForm('calibration');resetBreakdownForm();
+    render();renderRecords('maintenance');renderRecords('calibration');renderBreakdowns();queueCloudSave();
     alert('Importação concluída! Foram recuperados: '+detail+'.');
   }catch(err){
     alert('Não foi possível importar este ficheiro. Confirma que selecionaste uma cópia de segurança JSON válida.\n\nDetalhe: '+err.message);
@@ -352,7 +407,7 @@ function addMonthsSafe(dateString, months){
   return d.toISOString().slice(0,10);
 }
 function recordReminderItems(){
-  const today=new Date().toISOString().slice(0,10), items=[];
+  const today=localToday(), items=[];
   maintenanceRecords.forEach(r=>{
     const months=Number(r.reminder||0), due=r.date;
     if(months&&due&&r.status!=='Realizada'){
@@ -371,7 +426,7 @@ function recordReminderItems(){
 }
 function checkRecordNotifications(){
   const items=recordReminderItems();
-  const today=new Date().toISOString().slice(0,10);
+  const today=localToday();
   const active=items.filter(x=>x.due>=today).sort((a,b)=>a.due.localeCompare(b.due));
   const panel=$("recordReminderPanel"), list=$("recordReminderList");
   if(panel&&list){
@@ -408,7 +463,7 @@ function checkRecordNotifications(){
 function checkNotifications(){
  checkRecordNotifications();
  if(!('Notification' in window)||Notification.permission!=='granted')return;
- const today=new Date().toISOString().slice(0,10);
+ const today=localToday();
  if(notifiedToday===today)return;
  const due=tasks.filter(t=>!t.done&&t.due&&t.due<=today);
  if(!due.length)return;
@@ -418,7 +473,7 @@ function checkNotifications(){
  const parts=[];
  if(overdue)parts.push(`${overdue} tarefa(s) atrasada(s)`);
  if(dueToday)parts.push(`${dueToday} tarefa(s) com prazo para hoje`);
- try{new Notification('Tarefas de Trabalho',{body:parts.join(' · '),icon:'./icon-192.png'})}catch(e){}
+ try{new Notification('Restradas | Gestão Operacional',{body:parts.join(' · '),icon:'./icon-192.png'})}catch(e){}
 }
 $('notifyBtn').onclick=enableNotifications;
 
@@ -451,7 +506,17 @@ function renderRecords(kind){
   $(isM?'maintenanceCount':'calibrationCount').textContent=records.length+' '+(records.length===1?'registo':'registos');
   list.innerHTML='';
   if(!records.length){list.innerHTML='<div class="empty"><strong>Sem registos ainda</strong>Preenche o formulário acima para adicionar o primeiro registo.</div>';return}
-  records.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  // Ordenar pela próxima data relevante, da mais próxima para a mais distante.
+  // Registos sem data ficam no fim. Nas manutenções usa-se a data prevista;
+  // nas calibrações/ensaios usa-se a próxima data prevista.
+  records.sort((a,b)=>{
+    const dateA=isM?(a.date||''):(a.next||'');
+    const dateB=isM?(b.date||''):(b.next||'');
+    if(!dateA && !dateB) return 0;
+    if(!dateA) return 1;
+    if(!dateB) return -1;
+    return dateA.localeCompare(dateB);
+  });
   records.forEach(r=>{
     const el=document.createElement('article');el.className='task record';
     const content=document.createElement('div');
@@ -462,7 +527,7 @@ function renderRecords(kind){
     const chips=document.createElement('div');chips.className='chips';
     const reminderDate=isM?r.date:r.next;const reminderMonths=Number(r.reminder||0);const reminderText=reminderMonths&&reminderDate&&r.status!=='Realizada'&&r.status!=='Não aplicável'?`Aviso ${reminderMonths} mês(es) antes` : '';
     const values=[r.area,r.equipment,r.status,r.date?'Data · '+dateLabel(r.date):'',!isM&&r.next?'Próxima · '+dateLabel(r.next):'',reminderText,r.owner?'Responsável · '+r.owner:''].filter(Boolean);
-    values.forEach((v,i)=>{const chip=document.createElement('span');chip.className='chip'+(i===2&&(/Não conforme|Adiada/.test(v))?' high':'');chip.textContent=v;chips.append(chip)});
+    values.forEach((v)=>{const chip=document.createElement('span');chip.className='chip'+(/Não conforme|Adiada/.test(v)?' high':'');if(v===r.area){chip.classList.add(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro')}if((isM&&r.status!=='Realizada'&&v==='Data · '+dateLabel(r.date))||(!isM&&r.status!=='Não aplicável'&&v==='Próxima · '+dateLabel(r.next))){const today=localToday(),days=Math.ceil((new Date(reminderDate+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);chip.classList.add(days<0?'next-overdue':days<=30?'next-soon':'next-date')}chip.textContent=v;chips.append(chip)});
     content.append(chips);
     if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
     const actions=document.createElement('div');actions.className='taskactions';
@@ -498,11 +563,35 @@ function setupRecordForm(kind){
   });
   $(prefix+'Cancel').onclick=()=>resetRecordForm(kind);
 }
+// Módulo independente de avarias
+const BREAKDOWN_KEY='restradasAvariasV1';
+let breakdownRecords=[], breakdownFilter='Todas', editingBreakdownId=null;
+function loadBreakdowns(){try{breakdownRecords=JSON.parse(localStorage.getItem(BREAKDOWN_KEY)||'[]');if(!Array.isArray(breakdownRecords))breakdownRecords=[]}catch(e){breakdownRecords=[]}}
+function persistBreakdowns(){localStorage.setItem(BREAKDOWN_KEY,JSON.stringify(breakdownRecords));renderBreakdowns();queueCloudSave();renderTodayPanel()}
+function resetBreakdownForm(){editingBreakdownId=null;$('breakdownForm').reset();$('breakdownId').value='';$('breakdownDate').value=localToday();$('breakdownSeverity').value='Média';$('breakdownStatus').value='Por resolver';$('breakdownStopped').value='Sim';$('breakdownHours').value='0';$('breakdownSave').textContent='Guardar avaria';$('breakdownCancel').classList.add('hidden')}
+function renderBreakdowns(){
+ const home=$('homeBreakdownCounts');if(home){home.innerHTML='';['Pedreira','Betão','Outro'].forEach(area=>{const count=breakdownRecords.filter(r=>r.area===area&&r.status!=='Resolvida').length;const box=document.createElement('div');box.className='breakdown-stat';const strong=document.createElement('strong');strong.textContent=count;const span=document.createElement('span');span.textContent=area==='Betão'?'Central de Betão':area;box.append(strong,span);home.append(box)});const critical=breakdownRecords.filter(r=>r.status!=='Resolvida'&&(r.severity==='Crítica'||r.severity==='Alta'));const alert=$('homeBreakdownAlert');alert.textContent=critical.length?`⚠️ ${critical.length} avaria(s) crítica(s)/alta(s) por resolver.`:'Sem avarias críticas/altas em aberto.';alert.style.color=critical.length?'#b42318':'#68756f';}
+ const summary=$('breakdownSummary');if(!summary)return;summary.innerHTML='';
+ const open=breakdownRecords.filter(r=>r.status!=='Resolvida'), critical=open.filter(r=>r.severity==='Crítica'||r.severity==='Alta'), stopped=open.filter(r=>r.stopped==='Sim');
+ [['Em aberto',open.length],['Críticas/altas',critical.length],['Equip. parados',stopped.length]].forEach(([label,value])=>{const box=document.createElement('div');box.className='breakdown-stat';const strong=document.createElement('strong');strong.textContent=value;const span=document.createElement('span');span.textContent=label;box.append(strong,span);summary.append(box)});
+ const q=$('breakdownSearch').value.trim().toLocaleLowerCase('pt-PT');let rows=breakdownRecords.filter(r=>(breakdownFilter==='Todas'||r.area===breakdownFilter)&&(!q||(r.title+' '+r.equipment+' '+r.notes+' '+r.area).toLocaleLowerCase('pt-PT').includes(q)));
+ rows.sort((a,b)=>Number(a.status==='Resolvida')-Number(b.status==='Resolvida')||(b.date||'').localeCompare(a.date||''));$('breakdownCount').textContent=rows.length+(rows.length===1?' registo':' registos');const list=$('breakdownList');list.innerHTML='';
+ const alerts=critical.length;if(alerts){const alert=document.createElement('div');alert.className='reminder-panel';const h=document.createElement('h2');h.textContent='⚠️ Atenção: avarias críticas/altas em aberto';const p=document.createElement('div');p.className='sub';p.textContent=critical.map(r=>r.equipment+' — '+r.title).join(' · ');alert.append(h,p);list.append(alert)}
+ if(!rows.length){const empty=document.createElement('div');empty.className='empty';const strong=document.createElement('strong');strong.textContent='Sem avarias neste filtro';empty.append(strong,document.createTextNode('Regista uma avaria no formulário acima.'));list.append(empty);return}
+ rows.forEach(r=>{const el=document.createElement('article');el.className='task record';const content=document.createElement('div');const top=document.createElement('div');top.className='tasktop';const title=document.createElement('div');title.className='tasktitle';title.textContent=r.title+' — '+r.equipment;const del=document.createElement('button');del.className='iconbtn';del.textContent='×';del.title='Apagar avaria';del.onclick=()=>{if(confirm('Queres apagar este registo de avaria?')){breakdownRecords=breakdownRecords.filter(x=>x.id!==r.id);persistBreakdowns()}};top.append(title,del);content.append(top);
+ const chips=document.createElement('div');chips.className='chips';const area=document.createElement('span');area.className='chip '+(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro');area.textContent=r.area==='Betão'?'Central de Betão':r.area;chips.append(area);
+ [[r.status,r.status==='Resolvida'?'':'medium'],['Gravidade '+r.severity,(r.severity==='Crítica'||r.severity==='Alta')?'high':r.severity==='Média'?'medium':''],['Data · '+dateLabel(r.date),''],['Equipamento parado · '+r.stopped,r.stopped==='Sim'?'high':''],['Paragem · '+(Number(r.hours)||0)+' h','']].forEach(([v,c])=>{const chip=document.createElement('span');chip.className='chip '+c;chip.textContent=v;chips.append(chip)});content.append(chips);
+ if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}const actions=document.createElement('div');actions.className='taskactions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>{editingBreakdownId=r.id;$('breakdownId').value=r.id;$('breakdownTitle').value=r.title;$('breakdownArea').value=r.area;$('breakdownEquipment').value=r.equipment;$('breakdownDate').value=r.date;$('breakdownSeverity').value=r.severity;$('breakdownStatus').value=r.status;$('breakdownStopped').value=r.stopped;$('breakdownHours').value=r.hours;$('breakdownNotes').value=r.notes||'';$('breakdownSave').textContent='Guardar alterações';$('breakdownCancel').classList.remove('hidden');$('breakdownPanel').scrollIntoView({behavior:'smooth',block:'start'})};const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=r.status==='Resolvida'?'Reabrir':'Marcar resolvida';toggle.onclick=()=>{r.status=r.status==='Resolvida'?'Por resolver':'Resolvida';persistBreakdowns()};actions.append(edit,toggle);content.append(actions);el.append(content);list.append(el)});
+}
+$('breakdownForm').addEventListener('submit',e=>{e.preventDefault();const r={id:editingBreakdownId||Date.now().toString(36)+Math.random().toString(36).slice(2,7),title:$('breakdownTitle').value.trim(),area:$('breakdownArea').value,equipment:$('breakdownEquipment').value.trim(),date:$('breakdownDate').value,severity:$('breakdownSeverity').value,status:$('breakdownStatus').value,stopped:$('breakdownStopped').value,hours:Number($('breakdownHours').value)||0,notes:$('breakdownNotes').value.trim()};const idx=breakdownRecords.findIndex(x=>x.id===r.id);if(idx>=0)breakdownRecords[idx]=r;else breakdownRecords.push(r);persistBreakdowns();resetBreakdownForm()});
+$('breakdownCancel').onclick=resetBreakdownForm;$('breakdownSearch').addEventListener('input',renderBreakdowns);$('breakdownFilters').addEventListener('click',e=>{const b=e.target.closest('[data-breakdown-filter]');if(!b)return;breakdownFilter=b.dataset.breakdownFilter;$('breakdownFilters').querySelectorAll('[data-breakdown-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBreakdowns()});
+function showBreakdownPanel(){$('weeklyPanel').classList.add('hidden');$('maintenancePanel').classList.add('hidden');$('calibrationPanel').classList.add('hidden');$('breakdownPanel').classList.remove('hidden');renderBreakdowns();$('breakdownPanel').scrollIntoView({behavior:'smooth',block:'start'})}
+$('breakdownNav').onclick=showBreakdownPanel;$('openBreakdownsFromHome').onclick=showBreakdownPanel;$('closeBreakdown').onclick=()=>$('breakdownPanel').classList.add('hidden');
 $('maintenanceNav').onclick=()=>showRecordPanel('maintenance');
 $('calibrationNav').onclick=()=>showRecordPanel('calibration');
 $('closeMaintenance').onclick=()=>$('maintenancePanel').classList.add('hidden');
 $('closeCalibration').onclick=()=>$('calibrationPanel').classList.add('hidden');
-setupRecordForm('maintenance');setupRecordForm('calibration');loadRecords();
+setupRecordForm('maintenance');setupRecordForm('calibration');loadRecords();loadBreakdowns();resetBreakdownForm();
 $('cloudLoginForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
@@ -519,7 +608,7 @@ $('cloudLogout').onclick=async()=>{
 };
 
 
-load();render();renderRecords('maintenance');renderRecords('calibration');checkNotifications();checkRecordNotifications();
+load();render();renderRecords('maintenance');renderRecords('calibration');renderBreakdowns();renderTodayPanel();checkNotifications();checkRecordNotifications();
 (async()=>{
   const {data,error}=await supabaseClient.auth.getSession();
   if(error){cloudStatus('Erro ao verificar sessão: '+error.message);return;}
