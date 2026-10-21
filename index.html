@@ -938,7 +938,7 @@ function concreteSalePrice(c){const cost=concreteRawCost(c).total;return cost*(1
 function concreteBreakdown(c){
  const costs=concreteRawCost(c);
  const lines=[];
- concreteMaterialMeta.forEach(([k,label])=>{const qty=Number(c[k])||0,unit=Number(concreteCosts[k])||0;if(qty)lines.push(`${label}: ${num(qty)} kg × ${euro(unit)}/kg = ${euro(qty*unit)}`)});
+ concreteMaterialMeta.forEach(([k,label])=>{if(k==='cementII'||k==='cementI')return;const qty=Number(c[k])||0,unit=Number(concreteCosts[k])||0;if(qty)lines.push(`${label}: ${num(qty)} kg × ${euro(unit)}/kg = ${euro(qty*unit)}`)});
  if(costs.cementIIQty)lines.push(`CEM II/A-L 42,5R: ${num(costs.cementIIQty)} kg × ${euro(costs.cementIIUnitPrice)}/kg = ${euro(costs.cementIICost)}`);
  if(costs.cementIQty)lines.push(`CEM I/A-L 52,5R: ${num(costs.cementIQty)} kg × ${euro(costs.cementIUnitPrice)}/kg = ${euro(costs.cementICost)}`);
  if((Number(c.cementII)||0)===0&&(Number(c.cementI)||0)>0)lines.unshift('⚠️ Esta composição utiliza apenas CEM I 52,5R; não foi contabilizado CEM II 42,5R.');
