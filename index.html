@@ -266,7 +266,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="proposalContact">Contacto / email</label><input id="proposalContact" placeholder="Telefone ou email"></div>
         <div><label for="proposalTax">N.º contribuinte</label><input id="proposalTax" placeholder="NIF (opcional)"></div>
         <div><label for="proposalDate">Data da proposta</label><input id="proposalDate" type="date"></div>
-        <div><label for="proposalRef">Referência da proposta</label><input id="proposalRef" placeholder="Ex.: BP.26.280_R00"></div>
+        <div><label for="proposalRef">Referência da proposta</label><input id="proposalRef" value="BP.26.000_R00" placeholder="Ex.: BP.26.280_R00"></div>
         <div><label for="proposalPumpType">Equipamento de bombagem</label><select id="proposalPumpType"><option value="none">Sem bombagem</option><option value="Autobomba">Autobomba</option><option value="Camião-bomba">Camião-bomba</option></select></div>
         <div><label for="proposalPumpMode">Forma de cobrança da bombagem</label><select id="proposalPumpMode"><option value="perM3">Preço por m³</option><option value="fixed">Preço fixo / total (€)</option></select></div>
         <div><label for="proposalPumpPrice">Preço da bombagem (€)</label><input id="proposalPumpPrice" type="number" min="0" step="0.01" value="12"></div>
@@ -1002,8 +1002,9 @@ async function deleteProposalPdf(id){
  return new Promise((resolve,reject)=>{const tx=db.transaction('proposals','readwrite');tx.objectStore('proposals').delete(id);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
 }
 function proposalFilename(ref,client){
- const clean=v=>String(v||'Proposta').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,55);
- return (clean(ref||'Proposta')+'_'+clean(client||'Cliente')+'.pdf').replace(/_+/g,'_');
+ const clean=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,80);
+ // O nome do ficheiro é a referência da proposta; se estiver vazia, usar a referência padrão.
+ return (clean(ref||'BP.26.000_R00')||'BP.26.000_R00')+'.pdf';
 }
 function proposalHtml(data){
  const {client,work,address,contact,tax,date,ref,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals}=data;
@@ -1057,13 +1058,13 @@ async function renderProposalArchive(){
   if(!items.length){host.innerHTML='<div class="empty">Ainda não existem propostas guardadas. Quando gerares um PDF, ficará listado aqui.</div>';return}
   host.innerHTML='';
   items.forEach(item=>{
-   const row=document.createElement('div');row.className='task';row.style.marginBottom='8px';
-   const content=document.createElement('div');content.style.flex='1';
-   const title=document.createElement('div');title.className='tasktitle';title.textContent=item.ref+' · '+item.client;
+   const row=document.createElement('div');row.className='task';row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px;padding:14px;min-width:0;';
+   const content=document.createElement('div');content.style.cssText='flex:1 1 240px;min-width:0;overflow-wrap:anywhere;';
+   const title=document.createElement('div');title.className='tasktitle';title.style.cssText='overflow-wrap:anywhere;word-break:normal;white-space:normal;';title.textContent=item.ref+' · '+item.client;
    const meta=document.createElement('div');meta.className='sub';meta.textContent=(item.work||'Sem obra')+' · '+dateLabel(item.date)+' · Guardado '+new Date(item.createdAt).toLocaleString('pt-PT');
    content.append(title,meta);
-   const actions=document.createElement('div');actions.style.display='flex';actions.style.flexWrap='wrap';actions.style.gap='6px';
-   const btn=(label,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.onclick=fn;actions.append(b)};
+   const actions=document.createElement('div');actions.style.cssText='display:flex;flex:0 1 auto;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;';
+   const btn=(label,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.style.cssText='width:auto;min-width:82px;max-width:130px;min-height:42px;white-space:normal;flex:0 0 auto;padding:8px 12px;';b.onclick=fn;actions.append(b)};
    btn('Exportar','secondary',()=>downloadProposal(item));
    btn('Email','secondary',()=>shareProposal(item,'email'));
    btn('WhatsApp','secondary',()=>shareProposal(item,'whatsapp'));
@@ -1100,14 +1101,14 @@ async function generateConcreteProposal(){
  if(!selected.length){alert('Seleciona pelo menos uma composição e indica uma quantidade superior a zero.');return}
  if(!window.html2pdf){alert('Não foi possível carregar o gerador de PDF. Verifica a ligação à internet e tenta novamente.');return}
  const client=$('proposalClient').value.trim()||'—',work=$('proposalWork').value.trim()||'—',address=$('proposalAddress').value.trim(),contact=$('proposalContact').value.trim(),tax=$('proposalTax').value.trim();
- const date=$('proposalDate').value||localToday(),ref=$('proposalRef').value.trim()||('BP.'+date.slice(2,4)+'.'+date.slice(5,7)+date.slice(8,10)+'_R00'),notes=$('proposalNotes').value.trim();
+ const date=$('proposalDate').value||localToday(),ref=$('proposalRef').value.trim()||'BP.26.000_R00',notes=$('proposalNotes').value.trim();
  const volume=selected.reduce((sum,x)=>sum+x.qty,0),concreteTotal=selected.reduce((sum,x)=>sum+concreteSalePrice(x.c)*x.qty,0);
  const pumpType=$('proposalPumpType').value,pumpMode=$('proposalPumpMode').value,pumpPrice=Math.max(0,Number($('proposalPumpPrice').value)||0);
  const pumpTotal=pumpType==='none'?0:(pumpMode==='perM3'?pumpPrice*volume:pumpPrice),total=concreteTotal+pumpTotal;
  const showTotals=selected.some(({qty})=>Math.abs(qty-1)>0.000001);
  const data={client,work,address,contact,tax,date,ref,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals};
  const filename=proposalFilename(ref,client);
- const renderHost=document.createElement('div');renderHost.style.cssText='position:fixed;left:-12000px;top:0;width:740px;z-index:-1;background:#fff;';renderHost.innerHTML=proposalHtml(data);document.body.appendChild(renderHost);
+ const renderHost=document.createElement('div');renderHost.style.cssText='position:fixed;left:0;top:0;width:740px;z-index:2147483000;background:#fff;opacity:1;pointer-events:none;';renderHost.innerHTML=proposalHtml(data);document.body.appendChild(renderHost);
  const button=$('generateProposal'),originalLabel=button.textContent;button.disabled=true;button.textContent='A gerar e guardar PDF…';
  try{
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
