@@ -203,6 +203,16 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
     <div class="panelhead"><div><h2>🧱 Análise de Composições de Betão</h2><div class="sub">Custos de produção, preços de venda, simulador e propostas comerciais</div></div><button class="secondary" id="concreteOpen">Abrir módulo</button></div>
     <div class="sub">Módulo independente dos registos operacionais. As composições iniciais são da folha 02.10.2026.</div>
   </section>
+  <style>
+  #concreteTabs{gap:8px;padding:10px;margin:10px 0 16px;border-radius:12px;background:#edf2ef;border:1px solid #d5e0da}
+  #concreteTabs button[data-ctab="compositions"]{background:#dce9e1;border-color:#a9c6b5;color:#214f3e;font-weight:700}
+  #concreteTabs button[data-ctab="materials"]{background:#e4e9f5;border-color:#b9c7e3;color:#304a78;font-weight:700}
+  #concreteTabs button[data-ctab="simulator"]{background:#fff0d8;border-color:#e7c58b;color:#795018;font-weight:700}
+  #concreteTabs button[data-ctab="proposal"]{background:#dcece9;border-color:#9fcac0;color:#145b50;font-weight:700}
+  #concreteTabs button[data-ctab].active{box-shadow:inset 0 0 0 2px currentColor,0 2px 5px #00000012;filter:saturate(1.12);transform:translateY(-1px)}
+  #concreteTabs button{padding:10px 14px;border-width:1px;border-style:solid;border-radius:9px}
+  @media(max-width:640px){#concreteTabs button{flex:1 1 45%;min-width:130px}}
+  </style>
   <section class="panel hidden" id="concretePanel">
     <div class="panelhead"><div><h2>🧱 Análise de Composições de Betão</h2><div class="sub" id="concreteCount">A carregar composições…</div></div><button class="secondary" id="concreteClose">Fechar</button></div>
     <div class="toolbar" id="concreteTabs" style="flex-wrap:wrap">
@@ -1076,11 +1086,17 @@ function proposalHtml(data){
  #proposalPdfDocument .clientgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin-bottom:12px;font-size:8.5pt}
  #proposalPdfDocument .proc{text-align:right;font-weight:bold}
  #proposalPdfDocument h1{text-align:center;font-size:13pt;letter-spacing:.5px;margin:10px 0 14px}
- #proposalPdfDocument table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5pt}
+ #proposalPdfDocument table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.6pt}
  #proposalPdfDocument th{font-weight:bold;text-align:left;border-bottom:1.5px solid #454d48;border-top:1px solid #c6cec9;padding:6px 4px;background:#f0f4f1}
- #proposalPdfDocument td{padding:6px 4px;vertical-align:top;border-bottom:1px solid #d8dedb;overflow-wrap:anywhere}
+ #proposalPdfDocument td{padding:6px 3px;vertical-align:top;border-bottom:1px solid #d8dedb;overflow-wrap:normal;word-break:normal}
+ #proposalPdfDocument th:nth-child(1),#proposalPdfDocument td:nth-child(1){width:7%;white-space:nowrap}
+ #proposalPdfDocument th:nth-child(2),#proposalPdfDocument td:nth-child(2){width:55%;white-space:nowrap;font-size:7.4pt;letter-spacing:-.1px}
+ #proposalPdfDocument th:nth-child(3),#proposalPdfDocument td:nth-child(3){width:10%;white-space:nowrap}
+ #proposalPdfDocument th:nth-child(4),#proposalPdfDocument td:nth-child(4){width:7%;white-space:nowrap}
+ #proposalPdfDocument th:nth-child(5),#proposalPdfDocument td:nth-child(5){width:10.5%;white-space:nowrap}
+ #proposalPdfDocument th:nth-child(6),#proposalPdfDocument td:nth-child(6){width:10.5%;white-space:nowrap}
  #proposalPdfDocument thead{display:table-header-group}#proposalPdfDocument tr{break-inside:avoid!important;page-break-inside:avoid!important}#proposalPdfDocument img{max-width:100%;height:auto}
- #proposalPdfDocument .item{width:9%}#proposalPdfDocument .quantity{width:10%}#proposalPdfDocument .unit{width:8%}#proposalPdfDocument .price{width:15%}
+ #proposalPdfDocument .item{width:7%}#proposalPdfDocument .quantity{width:10%}#proposalPdfDocument .unit{width:7%}#proposalPdfDocument .price{width:10.5%}
  #proposalPdfDocument .right{text-align:right;white-space:normal}#proposalPdfDocument .center{text-align:center}
  #proposalPdfDocument .conditions{margin-top:15px;font-size:8.5pt;break-inside:auto;page-break-inside:auto}
  #proposalPdfDocument .conditions h2{text-align:center;font-size:11pt;margin:0 0 10px;letter-spacing:.3px}
