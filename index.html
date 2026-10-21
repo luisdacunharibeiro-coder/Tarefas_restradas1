@@ -225,11 +225,12 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Incluir colunas comerciais: preço de custo, preço final, margem e transporte</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Sem o visto, exporta apenas a composição e as respetivas dosagens, mantendo o layout base da folha enviada.</div></div>
       </div>
       <div class="sub" style="margin:8px 0">A importação utiliza exclusivamente a folha <strong>02.10.2026</strong>. Os preços e os custos operacionais podem ser editados no separador “Preços dos materiais”.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Sem vistos: apresenta a lista completa.</div><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div>
       <div id="concreteSummary" class="breakdown-summary"></div>
       <div style="overflow:auto;max-height:650px;border:1px solid var(--line);border-radius:12px">
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:720px">
           <thead style="position:sticky;top:0;background:#eef4f0;z-index:1"><tr>
-            <th style="padding:10px;text-align:left">Código / designação</th><th style="padding:10px;text-align:right">Custo produção</th><th style="padding:10px;text-align:right">Margem</th><th style="padding:10px;text-align:right">Transporte</th><th style="padding:10px;text-align:right">Preço venda €/m³</th><th style="padding:10px">Ação</th>
+            <th style="padding:10px;text-align:center;width:44px">Visto</th><th style="padding:10px;text-align:left">Código / designação</th><th style="padding:10px;text-align:right">Custo produção</th><th style="padding:10px;text-align:right">Margem</th><th style="padding:10px;text-align:right">Transporte</th><th style="padding:10px;text-align:right">Preço venda €/m³</th><th style="padding:10px">Ação</th>
           </tr></thead><tbody id="concreteRows"></tbody>
         </table>
       </div>
@@ -854,6 +855,10 @@ const CONCRETE_DEFAULT_COSTS={
   energy:0.89, operations:2.75
 };
 let concreteCompositions=[], concreteCosts={...CONCRETE_DEFAULT_COSTS}, concreteEditingCode=null, concreteSimulatorDraft=null;
+const CONCRETE_SELECTION_KEY='restradasBetaoSelecionadosV1';
+let concreteSelectedCodes=new Set();
+try{const savedSelection=JSON.parse(localStorage.getItem(CONCRETE_SELECTION_KEY)||'[]');if(Array.isArray(savedSelection))concreteSelectedCodes=new Set(savedSelection.map(String));}catch(e){}
+function saveConcreteSelection(){try{localStorage.setItem(CONCRETE_SELECTION_KEY,JSON.stringify([...concreteSelectedCodes]));}catch(e){}}
 const concreteMaterialMeta=[
  ['sandFine','Areia fina 0/2','kg/m³','€/kg'],['sandMedium','Areia média 0/4','kg/m³','€/kg'],
  ['gravel410','Brita 4/10','kg/m³','€/kg'],['gravel814','Brita 8/14','kg/m³','€/kg'],['gravel1122','Brita 11/22','kg/m³','€/kg'],
@@ -907,11 +912,15 @@ function concreteBreakdown(c){
 function renderConcrete(){
  const q=($('concreteSearch')?.value||'').trim().toLocaleLowerCase('pt-PT');
  const ref=($('concreteReferenceFilter')?.value||'').trim().toLocaleLowerCase('pt-PT');
- const rows=concreteCompositions.filter(c=>(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
+ const hasSelection=concreteSelectedCodes.size>0;
+ const rows=concreteCompositions.filter(c=>(!hasSelection||concreteSelectedCodes.has(String(c.code)))&&(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
  $('concreteCount').textContent=`${concreteCompositions.length} composições · folha base 02.10.2026`;
+ const status=$('concreteSelectionStatus');if(status)status.textContent=hasSelection?`${concreteSelectedCodes.size} betão(ões) com visto — a mostrar apenas os selecionados (os filtros de pesquisa continuam ativos).`:'Sem vistos: apresenta a lista completa.';
+ const clearButton=$('concreteClearSelection');if(clearButton)clearButton.disabled=!hasSelection;
  const tbody=$('concreteRows');if(!tbody)return;tbody.innerHTML='';
  rows.forEach(c=>{
   const raw=concreteRawCost(c), sale=concreteSalePrice(c),tr=document.createElement('tr');tr.style.borderTop='1px solid #e0e7e3';
+  const checkCell=document.createElement('td');checkCell.style.cssText='padding:8px;text-align:center';const check=document.createElement('input');check.type='checkbox';check.checked=concreteSelectedCodes.has(String(c.code));check.title='Selecionar este betão para mostrar apenas os betões assinalados';check.setAttribute('aria-label','Selecionar '+(c.code||''));check.style.cssText='width:17px;height:17px;cursor:pointer';check.addEventListener('change',()=>{const code=String(c.code);if(check.checked)concreteSelectedCodes.add(code);else concreteSelectedCodes.delete(code);saveConcreteSelection();renderConcrete()});checkCell.append(check);
   const id=document.createElement('td');id.style.cssText='padding:10px;max-width:330px';id.innerHTML=`<strong>${safeText(c.code||'Sem código')}</strong><div style="margin-top:3px;color:#68756f;white-space:normal">${safeText(c.name||'')}</div>`;
   const cost=document.createElement('td');cost.style.cssText='padding:10px;text-align:right;white-space:nowrap';cost.textContent=euro(raw.total);
   const margin=document.createElement('td');margin.style.cssText='padding:6px;text-align:right;min-width:88px';
@@ -922,7 +931,7 @@ function renderConcrete(){
   transportInput.addEventListener('change',()=>{c.transport=Math.max(0,Number(transportInput.value)||0);saveConcreteData()});transport.append(transportInput);
   const price=document.createElement('td');price.style.cssText='padding:10px;text-align:right;white-space:nowrap;font-weight:750;color:#173b32';price.textContent=euro(sale);
   const action=document.createElement('td');action.style.padding='8px';const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Editar';b.onclick=()=>openConcreteEdit(c.code);action.append(b);
-  tr.append(id,cost,margin,transport,price,action);tbody.append(tr);
+  tr.append(checkCell,id,cost,margin,transport,price,action);tbody.append(tr);
  });
  const summary=$('concreteSummary');summary.innerHTML='';
  const avg=concreteCompositions.length?concreteCompositions.reduce((s,c)=>s+concreteRawCost(c).total,0)/concreteCompositions.length:0;
@@ -1272,6 +1281,7 @@ $('concreteEditClose').onclick=()=>$('concreteEditPanel').classList.add('hidden'
 $('concreteEditSave').onclick=saveConcreteEdit;
 $('concreteTabs').addEventListener('click',e=>{const b=e.target.closest('[data-ctab]');if(b)setConcreteTab(b.dataset.ctab)});
 $('concreteSearch').addEventListener('input',renderConcrete);$('concreteReferenceFilter').addEventListener('input',renderConcrete);
+$('concreteClearSelection').addEventListener('click',()=>{concreteSelectedCodes.clear();saveConcreteSelection();renderConcrete()});
 $('concreteApplyBulkValues').addEventListener('click',()=>{const marginEl=$('concreteBulkMargin'),transportEl=$('concreteBulkTransport');const margin=Number(marginEl.value),transport=Number(transportEl.value);if(marginEl.value.trim()===''||transportEl.value.trim()===''||!Number.isFinite(margin)||!Number.isFinite(transport)||margin<0||transport<0){alert('Indica uma margem e um transporte válidos, iguais ou superiores a zero.');return;}if(!confirm(`Aplicar a margem de ${num(margin,2)}% e o transporte de ${euro(transport)}/m³ a TODAS as ${concreteCompositions.length} composições? Os valores individuais atuais serão substituídos.`))return;concreteCompositions.forEach(c=>{c.margin=margin;c.transport=transport});saveConcreteData();alert(`Margem de ${num(margin,2)}% e transporte de ${euro(transport)}/m³ aplicados a todas as composições.`);});
 $('concreteResetDefaults').addEventListener('click',()=>{if(!confirm('Repor a margem de 23% e o transporte de 14 €/m³ em TODAS as composições? Os valores individuais atuais serão substituídos.'))return;$('concreteBulkMargin').value='23';$('concreteBulkTransport').value='14';concreteCompositions.forEach(c=>{c.margin=23;c.transport=14});saveConcreteData();alert('Valores predefinidos aplicados a todas as composições.');});
 $('concreteSaveCosts').onclick=()=>{Object.keys(concreteCosts).forEach(k=>{const el=$('cost_'+k);if(el)concreteCosts[k]=Math.max(0,Number(el.value)||0)});saveConcreteData();alert('Preços unitários e custos operacionais guardados.')};
