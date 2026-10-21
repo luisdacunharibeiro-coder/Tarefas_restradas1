@@ -213,7 +213,14 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
     </div>
     <div id="concreteCompositionsTab">
       <div class="formgrid">
-        <div class="full"><label for="concreteSearch">Pesquisar por código ou designação</label><input id="concreteSearch" type="search" placeholder="Ex.: BET.1002 ou C30/37"></div>
+        <div class="full" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8fbf9">
+          <div style="flex:1;min-width:130px"><label for="concreteBulkMargin">Margem para todos os betões (%)</label><input id="concreteBulkMargin" type="number" min="0" step="0.1" value="23"></div>
+          <div style="flex:1;min-width:150px"><label for="concreteBulkTransport">Transporte para todos os betões (€/m³)</label><input id="concreteBulkTransport" type="number" min="0" step="0.01" value="14"></div>
+          <button type="button" class="secondary" id="concreteApplyBulkValues">Aplicar a todas as composições</button>
+          <button type="button" class="secondary" id="concreteResetDefaults">Repor predefinição: 23% + 14 €/m³</button>
+        </div>
+        <div><label for="concreteReferenceFilter">Filtrar por referência (BET...)</label><input id="concreteReferenceFilter" type="search" placeholder="Ex.: BET.1002 ou BET.10" autocomplete="off"><div class="sub" style="margin-top:4px">Mostra apenas as composições cuja referência contém o texto indicado.</div></div>
+        <div><label for="concreteSearch">Pesquisar por designação ou classe</label><input id="concreteSearch" type="search" placeholder="Ex.: C30/37 ou betão leve"></div>
         <div><label for="concreteImportFile">Importar Excel de composições</label><input id="concreteImportFile" type="file" accept=".xlsx,.xls"></div>
         <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Incluir colunas comerciais: preço de custo, preço final, margem e transporte</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Sem o visto, exporta apenas a composição e as respetivas dosagens, mantendo o layout base da folha enviada.</div></div>
       </div>
@@ -899,15 +906,20 @@ function concreteBreakdown(c){
 }
 function renderConcrete(){
  const q=($('concreteSearch')?.value||'').trim().toLocaleLowerCase('pt-PT');
- const rows=concreteCompositions.filter(c=>!q||(String(c.code)+' '+String(c.name)).toLocaleLowerCase('pt-PT').includes(q));
+ const ref=($('concreteReferenceFilter')?.value||'').trim().toLocaleLowerCase('pt-PT');
+ const rows=concreteCompositions.filter(c=>(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
  $('concreteCount').textContent=`${concreteCompositions.length} composições · folha base 02.10.2026`;
  const tbody=$('concreteRows');if(!tbody)return;tbody.innerHTML='';
  rows.forEach(c=>{
   const raw=concreteRawCost(c), sale=concreteSalePrice(c),tr=document.createElement('tr');tr.style.borderTop='1px solid #e0e7e3';
   const id=document.createElement('td');id.style.cssText='padding:10px;max-width:330px';id.innerHTML=`<strong>${safeText(c.code||'Sem código')}</strong><div style="margin-top:3px;color:#68756f;white-space:normal">${safeText(c.name||'')}</div>`;
   const cost=document.createElement('td');cost.style.cssText='padding:10px;text-align:right;white-space:nowrap';cost.textContent=euro(raw.total);
-  const margin=document.createElement('td');margin.style.cssText='padding:10px;text-align:right';margin.textContent=num(c.margin??23,1)+'%';
-  const transport=document.createElement('td');transport.style.cssText='padding:10px;text-align:right;white-space:nowrap';transport.textContent=euro(c.transport??14);
+  const margin=document.createElement('td');margin.style.cssText='padding:6px;text-align:right;min-width:88px';
+  const marginInput=document.createElement('input');marginInput.type='number';marginInput.min='0';marginInput.step='0.1';marginInput.value=Number(c.margin??23);marginInput.title='Margem (%) — alterar diretamente';marginInput.setAttribute('aria-label','Margem percentual '+(c.code||''));marginInput.style.cssText='width:76px;min-width:0;padding:7px 5px;text-align:right;font-size:12px';
+  marginInput.addEventListener('change',()=>{c.margin=Math.max(0,Number(marginInput.value)||0);saveConcreteData()});margin.append(marginInput);
+  const transport=document.createElement('td');transport.style.cssText='padding:6px;text-align:right;min-width:105px';
+  const transportInput=document.createElement('input');transportInput.type='number';transportInput.min='0';transportInput.step='0.01';transportInput.value=Number(c.transport??14);transportInput.title='Transporte (€/m³) — alterar diretamente';transportInput.setAttribute('aria-label','Transporte por metro cúbico '+(c.code||''));transportInput.style.cssText='width:90px;min-width:0;padding:7px 5px;text-align:right;font-size:12px';
+  transportInput.addEventListener('change',()=>{c.transport=Math.max(0,Number(transportInput.value)||0);saveConcreteData()});transport.append(transportInput);
   const price=document.createElement('td');price.style.cssText='padding:10px;text-align:right;white-space:nowrap;font-weight:750;color:#173b32';price.textContent=euro(sale);
   const action=document.createElement('td');action.style.padding='8px';const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Editar';b.onclick=()=>openConcreteEdit(c.code);action.append(b);
   tr.append(id,cost,margin,transport,price,action);tbody.append(tr);
@@ -1153,7 +1165,7 @@ async function generateConcreteProposal(){
    margin:0,filename,image:{type:'jpeg',quality:0.98},
    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,scrollX:0,scrollY:0,foreignObjectRendering:false},
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-   pagebreak:{mode:['css'],avoid:['footer']}
+   pagebreak:{mode:['css','legacy']}
   }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
   const record={id:(crypto.randomUUID?crypto.randomUUID():'proposal-'+Date.now()+'-'+Math.random().toString(36).slice(2)),ref,client,work,date,filename,blob,createdAt:Date.now()};
   await saveProposalPdf(record);
@@ -1259,7 +1271,9 @@ $('concreteClose').onclick=()=>$('concretePanel').classList.add('hidden');
 $('concreteEditClose').onclick=()=>$('concreteEditPanel').classList.add('hidden');
 $('concreteEditSave').onclick=saveConcreteEdit;
 $('concreteTabs').addEventListener('click',e=>{const b=e.target.closest('[data-ctab]');if(b)setConcreteTab(b.dataset.ctab)});
-$('concreteSearch').addEventListener('input',renderConcrete);
+$('concreteSearch').addEventListener('input',renderConcrete);$('concreteReferenceFilter').addEventListener('input',renderConcrete);
+$('concreteApplyBulkValues').addEventListener('click',()=>{const marginEl=$('concreteBulkMargin'),transportEl=$('concreteBulkTransport');const margin=Number(marginEl.value),transport=Number(transportEl.value);if(marginEl.value.trim()===''||transportEl.value.trim()===''||!Number.isFinite(margin)||!Number.isFinite(transport)||margin<0||transport<0){alert('Indica uma margem e um transporte válidos, iguais ou superiores a zero.');return;}if(!confirm(`Aplicar a margem de ${num(margin,2)}% e o transporte de ${euro(transport)}/m³ a TODAS as ${concreteCompositions.length} composições? Os valores individuais atuais serão substituídos.`))return;concreteCompositions.forEach(c=>{c.margin=margin;c.transport=transport});saveConcreteData();alert(`Margem de ${num(margin,2)}% e transporte de ${euro(transport)}/m³ aplicados a todas as composições.`);});
+$('concreteResetDefaults').addEventListener('click',()=>{if(!confirm('Repor a margem de 23% e o transporte de 14 €/m³ em TODAS as composições? Os valores individuais atuais serão substituídos.'))return;$('concreteBulkMargin').value='23';$('concreteBulkTransport').value='14';concreteCompositions.forEach(c=>{c.margin=23;c.transport=14});saveConcreteData();alert('Valores predefinidos aplicados a todas as composições.');});
 $('concreteSaveCosts').onclick=()=>{Object.keys(concreteCosts).forEach(k=>{const el=$('cost_'+k);if(el)concreteCosts[k]=Math.max(0,Number(el.value)||0)});saveConcreteData();alert('Preços unitários e custos operacionais guardados.')};
 $('concreteImportFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)importConcreteExcel(f);e.target.value=''});
 $('concreteExportExcel').onclick=exportConcreteExcel;
