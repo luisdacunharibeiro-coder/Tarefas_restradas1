@@ -916,15 +916,19 @@ function saveConcreteData(){
 function euro(v){return (Number(v)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2});}
 function num(v,d=3){return (Number(v)||0).toLocaleString('pt-PT',{minimumFractionDigits:0,maximumFractionDigits:d});}
 function concreteRawCost(c){
-  // Valorização explícita e independente dos dois cimentos, sempre em kg/m³ × €/kg.
+  // Cada cimento é calculado pela sua própria quantidade e pelo respetivo preço €/kg.
+  // Assim, as fórmulas com CEM II, CEM I ou ambos refletem o custo real de cada ligante.
+  const qty=k=>Math.max(0,Number(String(c?.[k]??0).replace(',','.'))||0);
+  const price=k=>Math.max(0,Number(String(concreteCosts?.[k]??0).replace(',','.'))||0);
   const keys=['sandFine','sandMedium','gravel410','gravel814','gravel1122','filler','water','serenis','plast700','optima88','tard33'];
-  let materials=keys.reduce((sum,k)=>sum+(Number(c[k])||0)*(Number(concreteCosts[k])||0),0);
-  const cementIIQty=Number(c.cementII)||0, cementIQty=Number(c.cementI)||0;
-  const cementIICost=cementIIQty*(Number(concreteCosts.cementII)||0);
-  const cementICost=cementIQty*(Number(concreteCosts.cementI)||0);
+  let materials=keys.reduce((sum,k)=>sum+qty(k)*price(k),0);
+  const cementIIQty=qty('cementII'), cementIQty=qty('cementI');
+  const cementIICost=cementIIQty*price('cementII');
+  const cementICost=cementIQty*price('cementI');
   materials+=cementIICost+cementICost;
-  materials+= (Number(c.extra1Qty)||0)*(Number(c.extra1Price)||0)+(Number(c.extra2Qty)||0)*(Number(c.extra2Price)||0);
-  return {materials,cementIIQty,cementIQty,cementIICost,cementICost,energy:Number(concreteCosts.energy)||0,operations:Number(concreteCosts.operations)||0,total:materials+(Number(concreteCosts.energy)||0)+(Number(concreteCosts.operations)||0)};
+  materials+=qty('extra1Qty')*qty('extra1Price')+qty('extra2Qty')*qty('extra2Price');
+  const energy=price('energy'), operations=price('operations');
+  return {materials,cementIIQty,cementIQty,cementIICost,cementICost,energy,operations,total:materials+energy+operations};
 }
 function concreteSalePrice(c){const cost=concreteRawCost(c).total;return cost*(1+(Number(c.margin??23)||0)/100)+(Number(c.transport??14)||0);}
 function concreteBreakdown(c){
