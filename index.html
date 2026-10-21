@@ -1066,9 +1066,9 @@ function proposalHtml(data){
  const footer=`<footer><strong>Alvará de Construção 23919</strong><br>RESTRADAS – Revitalização de Estradas do Norte, Lda. · Sede: Rua da Pedreira n.º 2 – 4560-221 Marecos – Penafiel<br>E-mail: info@restradas.com · www.restradas.com · Tel.: 255 710 670 · Fax: 255 710 679<br>Sociedade por Quotas · N.C. 503 451 541 · Capital Social 1.200.000,00 Euros</footer>`;
  return `<div id="proposalPdfDocument" class="proposal-document">
  <style>
- #proposalPdfDocument{width:180mm;max-width:180mm;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:9pt;line-height:1.35;box-sizing:border-box;margin:0 auto}
+ #proposalPdfDocument{width:210mm;max-width:210mm;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:9pt;line-height:1.35;box-sizing:border-box;margin:0;padding:0}
  #proposalPdfDocument *{box-sizing:border-box}
- #proposalPdfDocument .sheet{width:180mm;min-height:0;height:auto;padding:0;background:#fff;overflow:visible;break-inside:auto;page-break-inside:auto}
+ #proposalPdfDocument .sheet{width:210mm;min-height:0;height:auto;padding:10mm; margin:0; background:#fff;overflow:visible;break-inside:auto;page-break-inside:auto}
  #proposalPdfDocument header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #245642;padding:0 0 8px;margin-bottom:12px}
  #proposalPdfDocument .logo{max-width:38mm;max-height:18mm;object-fit:contain}
  #proposalPdfDocument .companytitle{font-size:15pt;font-weight:bold;letter-spacing:1.5px;color:#214f3e}
@@ -1089,7 +1089,7 @@ function proposalHtml(data){
  #proposalPdfDocument .finaltotal{text-align:right;font-weight:bold;font-size:12pt;margin-top:12px;color:#214f3e}
  #proposalPdfDocument .signature{text-align:right;margin-top:16px;margin-right:8mm;line-height:1.6}
  #proposalPdfDocument footer{margin-top:18px;border-top:1px solid #c6cec9;padding-top:6px;font-size:7pt;color:#3d4741;line-height:1.4}
- @media print{@page{size:A4 portrait;margin:10mm}#proposalPdfDocument{width:180mm!important;max-width:180mm!important;margin:0 auto!important}}
+ @media print{@page{size:A4 portrait;margin:0}html,body{margin:0!important;padding:0!important}#proposalPdfDocument{width:210mm!important;max-width:210mm!important;margin:0!important;padding:0!important}#proposalPdfDocument .sheet{width:210mm!important;padding:10mm!important;margin:0!important}}
  </style>
  <div class="sheet">
  <header>${logo}<div><div class="companytitle">RESTRADAS</div><div class="companysub">Revitalização de Estradas do Norte, Lda.</div></div></header>
@@ -1163,11 +1163,11 @@ async function generateConcreteProposal(){
  const renderHost=document.createElement('div');
  // Manter o documento dentro do viewport e no fluxo da página durante a captura.
  // Elementos fixed/off-screen ou ancestrais ocultos podem resultar num PDF totalmente branco.
- renderHost.style.cssText='position:absolute;left:0;top:0;width:180mm;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;overflow:visible;box-sizing:border-box;padding:0;margin:0;';
+ renderHost.style.cssText='position:absolute;left:0;top:0;width:210mm;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;overflow:visible;box-sizing:border-box;padding:0;margin:0;';
  renderHost.innerHTML=proposalHtml(data);
  document.body.appendChild(renderHost);
  const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
- pdfDocument.style.cssText+='display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;left:0!important;top:0!important;';
+ pdfDocument.style.cssText+='display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;left:0!important;top:0!important;width:210mm!important;max-width:210mm!important;margin:0!important;padding:0!important;';
  const button=$('generateProposal'),originalLabel=button.textContent;button.disabled=true;button.textContent='A gerar e guardar PDF…';
  try{
   // Esperar que o browser componha o layout e que o logótipo esteja carregado.
@@ -1175,8 +1175,8 @@ async function generateConcreteProposal(){
   await Promise.all(logoImages.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,2500)})));
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const blob=await window.html2pdf().set({
-   margin:[10,10,10,10],filename,image:{type:'jpeg',quality:0.98},
-   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,foreignObjectRendering:false,windowWidth:900},
+   margin:[0,0,0,0],filename,image:{type:'jpeg',quality:0.98},
+   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,foreignObjectRendering:false,windowWidth:794,windowHeight:1123},
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
    pagebreak:{mode:['css','legacy'],avoid:['tr','img','header']}
   }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
