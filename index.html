@@ -267,6 +267,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div><label for="proposalTax">N.º contribuinte</label><input id="proposalTax" placeholder="NIF (opcional)"></div>
         <div><label for="proposalDate">Data da proposta</label><input id="proposalDate" type="date"></div>
         <div><label for="proposalRef">Referência da proposta</label><input id="proposalRef" value="BP.26.000_R00" placeholder="Ex.: BP.26.280_R00"></div>
+        <div><label for="proposalResponsible">Responsável pela proposta</label><input id="proposalResponsible" placeholder="Nome do responsável"></div>
         <div><label for="proposalPumpType">Equipamento de bombagem</label><select id="proposalPumpType"><option value="none">Sem bombagem</option><option value="Autobomba">Autobomba</option><option value="Camião-bomba">Camião-bomba</option></select></div>
         <div><label for="proposalPumpMode">Forma de cobrança da bombagem</label><select id="proposalPumpMode"><option value="perM3">Preço por m³</option><option value="fixed">Preço fixo / total (€)</option></select></div>
         <div><label for="proposalPumpPrice">Preço da bombagem (€)</label><input id="proposalPumpPrice" type="number" min="0" step="0.01" value="12"></div>
@@ -1007,7 +1008,7 @@ function proposalFilename(ref,client){
  return (clean(ref||'BP.26.000_R00')||'BP.26.000_R00')+'.pdf';
 }
 function proposalHtml(data){
- const {client,work,address,contact,tax,date,ref,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals}=data;
+ const {client,work,address,contact,tax,date,ref,responsible,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals}=data;
  const euroPdf=v=>(Number(v)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
  const qty=v=>Number(v||0).toLocaleString('pt-PT',{maximumFractionDigits:2});
  const logoSrc=document.querySelector('.brandline img')?.src||'';
@@ -1022,12 +1023,12 @@ function proposalHtml(data){
  <p><strong>OBSERVAÇÕES À PROPOSTA:</strong><br>${notes?safeText(notes)+'<br>':''}Controlo de qualidade realizado de acordo com as normas aplicáveis à marcação CE.</p>
  <p class="vat">A estes preços acresce o IVA à taxa legal em vigor.</p>
  ${showTotals?`<div class="finaltotal">Total Final: ${euroPdf(total)}</div>`:''}
- <div class="signature">Penafiel, ${safeText(dateLabel(date))}<br><br><strong>Arménio Soares</strong><br>Gestor de Cliente</div></section>`;
+ <div class="signature">Penafiel, ${safeText(dateLabel(date))}<br><br>${responsible?`<strong>${safeText(responsible)}</strong><br>`:''}Responsável pela proposta</div></section>`;
  const footer=`<footer><div><strong>Alvará de Construção 23919</strong></div><div class="company">RESTRADAS – Revitalização de Estradas do Norte, Lda. · Sede: Rua da Pedreira n.º 2 – 4560-221 Marecos – Penafiel<br>E-mail: info@restradas.com · www.restradas.com · Tel.: 255 710 670 · Fax: 255 710 679<br>Sociedade por Quotas · N.C. 503 451 541 · Capital Social 1.200.000,00 Euros<br>Mat. Cons. Reg. Com. de Penafiel sob o n.º 503 451 541</div></footer>`;
  return `<div id="proposalPdfDocument" class="proposal-document">
  <style>
- .proposal-document{width:740px;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.4;box-sizing:border-box}
- .proposal-document *{box-sizing:border-box}.proposal-document .page{width:740px;min-height:1045px;padding:32px 38px 26px;position:relative;background:#fff;display:flex;flex-direction:column}
+ .proposal-document{width:794px;max-width:794px;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.4;box-sizing:border-box}
+ .proposal-document *{box-sizing:border-box}.proposal-document .page{width:794px;min-height:1123px;padding:32px 42px 26px;position:relative;background:#fff;display:flex;flex-direction:column}
  .proposal-document .page+.page{page-break-before:always;break-before:page}.proposal-document header{display:flex;align-items:center;gap:16px;border-bottom:1px solid #aab5ae;padding-bottom:12px;margin-bottom:17px}
  .proposal-document .logo{max-width:150px;max-height:56px;object-fit:contain}.proposal-document .companytitle{font-size:15px;font-weight:bold;letter-spacing:2px;color:#214f3e}
  .proposal-document .companysub{font-size:9px;margin-top:3px}.proposal-document .clientgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;margin-bottom:18px;font-size:10px}
@@ -1101,17 +1102,17 @@ async function generateConcreteProposal(){
  if(!selected.length){alert('Seleciona pelo menos uma composição e indica uma quantidade superior a zero.');return}
  if(!window.html2pdf){alert('Não foi possível carregar o gerador de PDF. Verifica a ligação à internet e tenta novamente.');return}
  const client=$('proposalClient').value.trim()||'—',work=$('proposalWork').value.trim()||'—',address=$('proposalAddress').value.trim(),contact=$('proposalContact').value.trim(),tax=$('proposalTax').value.trim();
- const date=$('proposalDate').value||localToday(),ref=$('proposalRef').value.trim()||'BP.26.000_R00',notes=$('proposalNotes').value.trim();
+ const date=$('proposalDate').value||localToday(),ref=$('proposalRef').value.trim()||'BP.26.000_R00',responsible=$('proposalResponsible').value.trim(),notes=$('proposalNotes').value.trim();
  const volume=selected.reduce((sum,x)=>sum+x.qty,0),concreteTotal=selected.reduce((sum,x)=>sum+concreteSalePrice(x.c)*x.qty,0);
  const pumpType=$('proposalPumpType').value,pumpMode=$('proposalPumpMode').value,pumpPrice=Math.max(0,Number($('proposalPumpPrice').value)||0);
  const pumpTotal=pumpType==='none'?0:(pumpMode==='perM3'?pumpPrice*volume:pumpPrice),total=concreteTotal+pumpTotal;
  const showTotals=selected.some(({qty})=>Math.abs(qty-1)>0.000001);
- const data={client,work,address,contact,tax,date,ref,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals};
+ const data={client,work,address,contact,tax,date,ref,responsible,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals};
  const filename=proposalFilename(ref,client);
  const renderHost=document.createElement('div');
  // Manter o documento dentro do viewport e no fluxo da página durante a captura.
  // Elementos fixed/off-screen ou ancestrais ocultos podem resultar num PDF totalmente branco.
- renderHost.style.cssText='position:absolute;left:0;top:0;width:740px;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;';
+ renderHost.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;';
  renderHost.innerHTML=proposalHtml(data);
  document.body.appendChild(renderHost);
  const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
@@ -1124,7 +1125,7 @@ async function generateConcreteProposal(){
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const blob=await window.html2pdf().set({
    margin:0,filename,image:{type:'jpeg',quality:0.98},
-   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0},
+   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0,foreignObjectRendering:false},
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
    pagebreak:{mode:['css','legacy'],before:'.page+.page'}
   }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
