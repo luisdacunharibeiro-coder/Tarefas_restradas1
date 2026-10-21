@@ -1108,16 +1108,26 @@ async function generateConcreteProposal(){
  const showTotals=selected.some(({qty})=>Math.abs(qty-1)>0.000001);
  const data={client,work,address,contact,tax,date,ref,notes,selected,pumpType,pumpMode,pumpPrice,pumpTotal,volume,total,showTotals};
  const filename=proposalFilename(ref,client);
- const renderHost=document.createElement('div');renderHost.style.cssText='position:fixed;left:0;top:0;width:740px;z-index:2147483000;background:#fff;opacity:1;pointer-events:none;';renderHost.innerHTML=proposalHtml(data);document.body.appendChild(renderHost);
+ const renderHost=document.createElement('div');
+ // Manter o documento dentro do viewport e no fluxo da página durante a captura.
+ // Elementos fixed/off-screen ou ancestrais ocultos podem resultar num PDF totalmente branco.
+ renderHost.style.cssText='position:absolute;left:0;top:0;width:740px;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;';
+ renderHost.innerHTML=proposalHtml(data);
+ document.body.appendChild(renderHost);
+ const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
+ pdfDocument.style.cssText+='display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;left:0!important;top:0!important;';
  const button=$('generateProposal'),originalLabel=button.textContent;button.disabled=true;button.textContent='A gerar e guardar PDF…';
  try{
+  // Esperar que o browser componha o layout e que o logótipo esteja carregado.
+  const logoImages=Array.from(pdfDocument.querySelectorAll('img'));
+  await Promise.all(logoImages.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,2500)})));
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const blob=await window.html2pdf().set({
    margin:0,filename,image:{type:'jpeg',quality:0.98},
-   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
+   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0},
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
    pagebreak:{mode:['css','legacy'],before:'.page+.page'}
-  }).from(renderHost.querySelector('#proposalPdfDocument')).outputPdf('blob');
+  }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
   const record={id:(crypto.randomUUID?crypto.randomUUID():'proposal-'+Date.now()+'-'+Math.random().toString(36).slice(2)),ref,client,work,date,filename,blob,createdAt:Date.now()};
   await saveProposalPdf(record);
   renderHost.remove();
