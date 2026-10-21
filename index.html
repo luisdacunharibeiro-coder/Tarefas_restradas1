@@ -887,16 +887,25 @@ function applyConcreteBackup(data){
   if(typeof renderConcrete==='function'){renderConcrete();renderConcreteCosts();renderProposalRows();}
 }
 function loadConcreteData(){
-  const datasetVersion='excel-02.10.2026-v3-cement-columns';
-  let storedVersion='';
-  try{storedVersion=localStorage.getItem('restradasComposicoesDatasetVersion')||'';}catch(e){}
+  const datasetVersion='excel-02.10.2026-v4-cement-costs-separated';
+  const cementCostVersion='cement-costs-2026-10-v1';
+  let storedVersion='',storedCementCostVersion='';
+  try{storedVersion=localStorage.getItem('restradasComposicoesDatasetVersion')||'';storedCementCostVersion=localStorage.getItem('restradasCimentoCustosVersion')||'';}catch(e){}
   try{
     const saved=JSON.parse(localStorage.getItem(CONCRETE_KEY)||'null');
     concreteCompositions=(storedVersion===datasetVersion&&Array.isArray(saved))?saved:CONCRETE_INITIAL.map(x=>({...x}));
   }catch(e){concreteCompositions=CONCRETE_INITIAL.map(x=>({...x}));}
   try{const costs=JSON.parse(localStorage.getItem(CONCRETE_COST_KEY)||'null');if(costs&&typeof costs==='object')concreteCosts={...CONCRETE_DEFAULT_COSTS,...costs};}catch(e){}
+  // Migração única: corrige valores antigos eventualmente guardados com o mesmo custo para ambos os cimentos.
+  // Após esta migração, o utilizador pode voltar a alterar os preços na área de custos.
+  if(storedCementCostVersion!==cementCostVersion){
+    concreteCosts.cementII=0.13120; // 131,20 €/t
+    concreteCosts.cementI=0.15097;  // 150,97 €/t
+    try{localStorage.setItem('restradasCimentoCustosVersion',cementCostVersion);}catch(e){}
+  }
   try{
     localStorage.setItem(CONCRETE_KEY,JSON.stringify(concreteCompositions));
+    localStorage.setItem(CONCRETE_COST_KEY,JSON.stringify(concreteCosts));
     localStorage.setItem('restradasComposicoesDatasetVersion',datasetVersion);
   }catch(e){}
 }
@@ -907,16 +916,23 @@ function saveConcreteData(){
 function euro(v){return (Number(v)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2});}
 function num(v,d=3){return (Number(v)||0).toLocaleString('pt-PT',{minimumFractionDigits:0,maximumFractionDigits:d});}
 function concreteRawCost(c){
-  const keys=['sandFine','sandMedium','gravel410','gravel814','gravel1122','cementII','cementI','filler','water','serenis','plast700','optima88','tard33'];
+  // Valorização explícita e independente dos dois cimentos, sempre em kg/m³ × €/kg.
+  const keys=['sandFine','sandMedium','gravel410','gravel814','gravel1122','filler','water','serenis','plast700','optima88','tard33'];
   let materials=keys.reduce((sum,k)=>sum+(Number(c[k])||0)*(Number(concreteCosts[k])||0),0);
+  const cementIIQty=Number(c.cementII)||0, cementIQty=Number(c.cementI)||0;
+  const cementIICost=cementIIQty*(Number(concreteCosts.cementII)||0);
+  const cementICost=cementIQty*(Number(concreteCosts.cementI)||0);
+  materials+=cementIICost+cementICost;
   materials+= (Number(c.extra1Qty)||0)*(Number(c.extra1Price)||0)+(Number(c.extra2Qty)||0)*(Number(c.extra2Price)||0);
-  return {materials,energy:Number(concreteCosts.energy)||0,operations:Number(concreteCosts.operations)||0,total:materials+(Number(concreteCosts.energy)||0)+(Number(concreteCosts.operations)||0)};
+  return {materials,cementIIQty,cementIQty,cementIICost,cementICost,energy:Number(concreteCosts.energy)||0,operations:Number(concreteCosts.operations)||0,total:materials+(Number(concreteCosts.energy)||0)+(Number(concreteCosts.operations)||0)};
 }
 function concreteSalePrice(c){const cost=concreteRawCost(c).total;return cost*(1+(Number(c.margin??23)||0)/100)+(Number(c.transport??14)||0);}
 function concreteBreakdown(c){
  const costs=concreteRawCost(c);
  const lines=[];
  concreteMaterialMeta.forEach(([k,label])=>{const qty=Number(c[k])||0,unit=Number(concreteCosts[k])||0;if(qty)lines.push(`${label}: ${num(qty)} kg × ${euro(unit)}/kg = ${euro(qty*unit)}`)});
+ if((Number(c.cementII)||0)===0&&(Number(c.cementI)||0)>0)lines.unshift('⚠️ Esta composição utiliza apenas CEM I 52,5R; não foi contabilizado CEM II 42,5R.');
+ else if((Number(c.cementII)||0)>0&&(Number(c.cementI)||0)>0)lines.unshift('Esta composição utiliza os dois cimentos; cada quantidade é valorizada ao preço unitário respetivo.');
  [['extra1Name','extra1Qty','extra1Price'],['extra2Name','extra2Qty','extra2Price']].forEach(([nk,qk,pk])=>{const q=Number(c[qk])||0;if(q)lines.push(`${c[nk]||'Material extra'}: ${num(q)} kg × ${euro(c[pk])}/kg = ${euro(q*(Number(c[pk])||0))}`)});
  lines.push(`Energia: ${euro(costs.energy)}/m³`,`Custos operacionais: ${euro(costs.operations)}/m³`,`Custo total de produção: ${euro(costs.total)}/m³`,`Margem: ${num(c.margin??23,1)}%`,`Transporte: ${euro(c.transport??14)}/m³`,`Preço de venda: ${euro(concreteSalePrice(c))}/m³`);
  return lines.join('\n');
