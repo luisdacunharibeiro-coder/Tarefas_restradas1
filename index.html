@@ -848,7 +848,7 @@ const CONCRETE_INITIAL = [{"code":"BET.1002","name":"C8/10; X0(P); S2; Cl0,40; D
 const CONCRETE_KEY='restradasAnaliseBetaoV1';
 const CONCRETE_COST_KEY='restradasCustosBetaoV1';
 const CONCRETE_DEFAULT_COSTS={
-  cementII:0.1312, cementI:0.15097, filler:0.0396,
+  cementII:0.13120, cementI:0.15097, filler:0.0396,
   sandFine:0.01728, sandMedium:0.009,
   gravel410:0.009, gravel814:0.009, gravel1122:0.009,
   water:0.00154, serenis:6, plast700:0.36, optima88:0.85, tard33:2,
@@ -877,7 +877,7 @@ function applyConcreteBackup(data){
   if(typeof renderConcrete==='function'){renderConcrete();renderConcreteCosts();renderProposalRows();}
 }
 function loadConcreteData(){
-  const datasetVersion='excel-02.10.2026-v2';
+  const datasetVersion='excel-02.10.2026-v3-cement-columns';
   let storedVersion='';
   try{storedVersion=localStorage.getItem('restradasComposicoesDatasetVersion')||'';}catch(e){}
   try{
