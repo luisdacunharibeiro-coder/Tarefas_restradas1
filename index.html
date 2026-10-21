@@ -225,7 +225,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
         <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Incluir colunas comerciais: preço de custo, preço final, margem e transporte</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Sem o visto, exporta apenas a composição e as respetivas dosagens, mantendo o layout base da folha enviada.</div></div>
       </div>
       <div class="sub" style="margin:8px 0">A importação utiliza exclusivamente a folha <strong>02.10.2026</strong>. Os preços e os custos operacionais podem ser editados no separador “Preços dos materiais”.</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Sem vistos: apresenta a lista completa.</div><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Modo lista completa: assinala os betões que queres e depois clica em “Mostrar apenas os betões com visto”.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="secondary" id="concreteToggleSelectedView">Mostrar apenas os betões com visto</button><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div></div>
       <div id="concreteSummary" class="breakdown-summary"></div>
       <div style="overflow:auto;max-height:650px;border:1px solid var(--line);border-radius:12px">
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:720px">
@@ -857,6 +857,8 @@ const CONCRETE_DEFAULT_COSTS={
 let concreteCompositions=[], concreteCosts={...CONCRETE_DEFAULT_COSTS}, concreteEditingCode=null, concreteSimulatorDraft=null;
 const CONCRETE_SELECTION_KEY='restradasBetaoSelecionadosV1';
 let concreteSelectedCodes=new Set();
+let concreteSelectedOnly=false;
+try{concreteSelectedOnly=localStorage.getItem('restradasBetaoMostrarSelecionadosV1')==='1';}catch(e){}
 try{const savedSelection=JSON.parse(localStorage.getItem(CONCRETE_SELECTION_KEY)||'[]');if(Array.isArray(savedSelection))concreteSelectedCodes=new Set(savedSelection.map(String));}catch(e){}
 function saveConcreteSelection(){try{localStorage.setItem(CONCRETE_SELECTION_KEY,JSON.stringify([...concreteSelectedCodes]));}catch(e){}}
 const concreteMaterialMeta=[
@@ -913,14 +915,15 @@ function renderConcrete(){
  const q=($('concreteSearch')?.value||'').trim().toLocaleLowerCase('pt-PT');
  const ref=($('concreteReferenceFilter')?.value||'').trim().toLocaleLowerCase('pt-PT');
  const hasSelection=concreteSelectedCodes.size>0;
- const rows=concreteCompositions.filter(c=>(!hasSelection||concreteSelectedCodes.has(String(c.code)))&&(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
+ const rows=concreteCompositions.filter(c=>(!concreteSelectedOnly||(hasSelection&&concreteSelectedCodes.has(String(c.code))))&&(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
  $('concreteCount').textContent=`${concreteCompositions.length} composições · folha base 02.10.2026`;
- const status=$('concreteSelectionStatus');if(status)status.textContent=hasSelection?`${concreteSelectedCodes.size} betão(ões) com visto — a mostrar apenas os selecionados (os filtros de pesquisa continuam ativos).`:'Sem vistos: apresenta a lista completa.';
+ const status=$('concreteSelectionStatus');if(status)status.textContent=concreteSelectedOnly?(hasSelection?`Modo seleção ativo: a mostrar ${rows.length} betão(ões) assinalados que correspondem aos filtros.`:'Modo seleção ativo, mas não há betões assinalados; usa “Mostrar lista completa” ou assinala betões primeiro.'):(hasSelection?`${concreteSelectedCodes.size} betão(ões) assinalados. A lista completa mantém-se visível até ativares o filtro.`:'Modo lista completa: assinala os betões que queres e depois aplica o filtro.');
+ const toggleButton=$('concreteToggleSelectedView');if(toggleButton){toggleButton.textContent=concreteSelectedOnly?'Mostrar lista completa':'Mostrar apenas os betões com visto';toggleButton.disabled=!concreteSelectedOnly&&!hasSelection;}
  const clearButton=$('concreteClearSelection');if(clearButton)clearButton.disabled=!hasSelection;
  const tbody=$('concreteRows');if(!tbody)return;tbody.innerHTML='';
  rows.forEach(c=>{
   const raw=concreteRawCost(c), sale=concreteSalePrice(c),tr=document.createElement('tr');tr.style.borderTop='1px solid #e0e7e3';
-  const checkCell=document.createElement('td');checkCell.style.cssText='padding:8px;text-align:center';const check=document.createElement('input');check.type='checkbox';check.checked=concreteSelectedCodes.has(String(c.code));check.title='Selecionar este betão para mostrar apenas os betões assinalados';check.setAttribute('aria-label','Selecionar '+(c.code||''));check.style.cssText='width:17px;height:17px;cursor:pointer';check.addEventListener('change',()=>{const code=String(c.code);if(check.checked)concreteSelectedCodes.add(code);else concreteSelectedCodes.delete(code);saveConcreteSelection();renderConcrete()});checkCell.append(check);
+  const checkCell=document.createElement('td');checkCell.style.cssText='padding:8px;text-align:center';const check=document.createElement('input');check.type='checkbox';check.checked=concreteSelectedCodes.has(String(c.code));check.title='Assinala os betões que pretendes trabalhar; a lista só é filtrada quando carregares no botão acima';check.setAttribute('aria-label','Selecionar '+(c.code||''));check.style.cssText='width:17px;height:17px;cursor:pointer';check.addEventListener('change',()=>{const code=String(c.code);if(check.checked)concreteSelectedCodes.add(code);else concreteSelectedCodes.delete(code);saveConcreteSelection();renderConcrete()});checkCell.append(check);
   const id=document.createElement('td');id.style.cssText='padding:10px;max-width:330px';id.innerHTML=`<strong>${safeText(c.code||'Sem código')}</strong><div style="margin-top:3px;color:#68756f;white-space:normal">${safeText(c.name||'')}</div>`;
   const cost=document.createElement('td');cost.style.cssText='padding:10px;text-align:right;white-space:nowrap';cost.textContent=euro(raw.total);
   const margin=document.createElement('td');margin.style.cssText='padding:6px;text-align:right;min-width:88px';
@@ -1063,9 +1066,9 @@ function proposalHtml(data){
  const footer=`<footer><strong>Alvará de Construção 23919</strong><br>RESTRADAS – Revitalização de Estradas do Norte, Lda. · Sede: Rua da Pedreira n.º 2 – 4560-221 Marecos – Penafiel<br>E-mail: info@restradas.com · www.restradas.com · Tel.: 255 710 670 · Fax: 255 710 679<br>Sociedade por Quotas · N.C. 503 451 541 · Capital Social 1.200.000,00 Euros</footer>`;
  return `<div id="proposalPdfDocument" class="proposal-document">
  <style>
- #proposalPdfDocument{width:190mm;max-width:190mm;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:9pt;line-height:1.35;box-sizing:border-box;margin:0 auto}
+ #proposalPdfDocument{width:180mm;max-width:180mm;background:#fff;color:#202520;font-family:Arial,Helvetica,sans-serif;font-size:9pt;line-height:1.35;box-sizing:border-box;margin:0 auto}
  #proposalPdfDocument *{box-sizing:border-box}
- #proposalPdfDocument .sheet{width:190mm;min-height:0;height:auto;padding:0;background:#fff;overflow:visible;break-inside:auto;page-break-inside:auto}
+ #proposalPdfDocument .sheet{width:180mm;min-height:0;height:auto;padding:0;background:#fff;overflow:visible;break-inside:auto;page-break-inside:auto}
  #proposalPdfDocument header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #245642;padding:0 0 8px;margin-bottom:12px}
  #proposalPdfDocument .logo{max-width:38mm;max-height:18mm;object-fit:contain}
  #proposalPdfDocument .companytitle{font-size:15pt;font-weight:bold;letter-spacing:1.5px;color:#214f3e}
@@ -1076,6 +1079,7 @@ function proposalHtml(data){
  #proposalPdfDocument table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5pt}
  #proposalPdfDocument th{font-weight:bold;text-align:left;border-bottom:1.5px solid #454d48;border-top:1px solid #c6cec9;padding:6px 4px;background:#f0f4f1}
  #proposalPdfDocument td{padding:6px 4px;vertical-align:top;border-bottom:1px solid #d8dedb;overflow-wrap:anywhere}
+ #proposalPdfDocument thead{display:table-header-group}#proposalPdfDocument tr{break-inside:avoid!important;page-break-inside:avoid!important}#proposalPdfDocument img{max-width:100%;height:auto}
  #proposalPdfDocument .item{width:9%}#proposalPdfDocument .quantity{width:10%}#proposalPdfDocument .unit{width:8%}#proposalPdfDocument .price{width:15%}
  #proposalPdfDocument .right{text-align:right;white-space:normal}#proposalPdfDocument .center{text-align:center}
  #proposalPdfDocument .conditions{margin-top:15px;font-size:8.5pt;break-inside:auto;page-break-inside:auto}
@@ -1085,7 +1089,7 @@ function proposalHtml(data){
  #proposalPdfDocument .finaltotal{text-align:right;font-weight:bold;font-size:12pt;margin-top:12px;color:#214f3e}
  #proposalPdfDocument .signature{text-align:right;margin-top:16px;margin-right:8mm;line-height:1.6}
  #proposalPdfDocument footer{margin-top:18px;border-top:1px solid #c6cec9;padding-top:6px;font-size:7pt;color:#3d4741;line-height:1.4}
- @media print{@page{size:A4 portrait;margin:10mm}#proposalPdfDocument{width:190mm!important;max-width:190mm!important;margin:0!important}}
+ @media print{@page{size:A4 portrait;margin:10mm}#proposalPdfDocument{width:180mm!important;max-width:180mm!important;margin:0 auto!important}}
  </style>
  <div class="sheet">
  <header>${logo}<div><div class="companytitle">RESTRADAS</div><div class="companysub">Revitalização de Estradas do Norte, Lda.</div></div></header>
@@ -1159,7 +1163,7 @@ async function generateConcreteProposal(){
  const renderHost=document.createElement('div');
  // Manter o documento dentro do viewport e no fluxo da página durante a captura.
  // Elementos fixed/off-screen ou ancestrais ocultos podem resultar num PDF totalmente branco.
- renderHost.style.cssText='position:absolute;left:0;top:0;width:190mm;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;';
+ renderHost.style.cssText='position:absolute;left:0;top:0;width:180mm;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;overflow:visible;box-sizing:border-box;padding:0;margin:0;';
  renderHost.innerHTML=proposalHtml(data);
  document.body.appendChild(renderHost);
  const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
@@ -1171,10 +1175,10 @@ async function generateConcreteProposal(){
   await Promise.all(logoImages.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,2500)})));
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const blob=await window.html2pdf().set({
-   margin:0,filename,image:{type:'jpeg',quality:0.98},
-   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,scrollX:0,scrollY:0,foreignObjectRendering:false},
-   jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-   pagebreak:{mode:['css','legacy']}
+   margin:[10,10,10,10],filename,image:{type:'jpeg',quality:0.98},
+   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,foreignObjectRendering:false,windowWidth:900},
+   jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
+   pagebreak:{mode:['css','legacy'],avoid:['tr','img','header']}
   }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
   const record={id:(crypto.randomUUID?crypto.randomUUID():'proposal-'+Date.now()+'-'+Math.random().toString(36).slice(2)),ref,client,work,date,filename,blob,createdAt:Date.now()};
   await saveProposalPdf(record);
@@ -1281,7 +1285,8 @@ $('concreteEditClose').onclick=()=>$('concreteEditPanel').classList.add('hidden'
 $('concreteEditSave').onclick=saveConcreteEdit;
 $('concreteTabs').addEventListener('click',e=>{const b=e.target.closest('[data-ctab]');if(b)setConcreteTab(b.dataset.ctab)});
 $('concreteSearch').addEventListener('input',renderConcrete);$('concreteReferenceFilter').addEventListener('input',renderConcrete);
-$('concreteClearSelection').addEventListener('click',()=>{concreteSelectedCodes.clear();saveConcreteSelection();renderConcrete()});
+$('concreteToggleSelectedView').addEventListener('click',()=>{if(!concreteSelectedOnly&&concreteSelectedCodes.size===0){alert('Assinala primeiro pelo menos um betão que pretendes manter na lista.');return;}concreteSelectedOnly=!concreteSelectedOnly;try{localStorage.setItem('restradasBetaoMostrarSelecionadosV1',concreteSelectedOnly?'1':'0')}catch(e){}renderConcrete()});
+$('concreteClearSelection').addEventListener('click',()=>{concreteSelectedCodes.clear();concreteSelectedOnly=false;try{localStorage.setItem('restradasBetaoMostrarSelecionadosV1','0')}catch(e){}saveConcreteSelection();renderConcrete()});
 $('concreteApplyBulkValues').addEventListener('click',()=>{const marginEl=$('concreteBulkMargin'),transportEl=$('concreteBulkTransport');const margin=Number(marginEl.value),transport=Number(transportEl.value);if(marginEl.value.trim()===''||transportEl.value.trim()===''||!Number.isFinite(margin)||!Number.isFinite(transport)||margin<0||transport<0){alert('Indica uma margem e um transporte válidos, iguais ou superiores a zero.');return;}if(!confirm(`Aplicar a margem de ${num(margin,2)}% e o transporte de ${euro(transport)}/m³ a TODAS as ${concreteCompositions.length} composições? Os valores individuais atuais serão substituídos.`))return;concreteCompositions.forEach(c=>{c.margin=margin;c.transport=transport});saveConcreteData();alert(`Margem de ${num(margin,2)}% e transporte de ${euro(transport)}/m³ aplicados a todas as composições.`);});
 $('concreteResetDefaults').addEventListener('click',()=>{if(!confirm('Repor a margem de 23% e o transporte de 14 €/m³ em TODAS as composições? Os valores individuais atuais serão substituídos.'))return;$('concreteBulkMargin').value='23';$('concreteBulkTransport').value='14';concreteCompositions.forEach(c=>{c.margin=23;c.transport=14});saveConcreteData();alert('Valores predefinidos aplicados a todas as composições.');});
 $('concreteSaveCosts').onclick=()=>{Object.keys(concreteCosts).forEach(k=>{const el=$('cost_'+k);if(el)concreteCosts[k]=Math.max(0,Number(el.value)||0)});saveConcreteData();alert('Preços unitários e custos operacionais guardados.')};
