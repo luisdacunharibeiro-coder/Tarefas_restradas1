@@ -295,7 +295,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
       <div style="overflow:auto;max-height:500px;border:1px solid var(--line);border-radius:12px">
         <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:620px"><thead style="background:#eef4f0;position:sticky;top:0"><tr><th style="padding:9px">Selecionar</th><th style="padding:9px;text-align:left">Código / designação</th><th style="padding:9px;text-align:right">Preço €/m³</th><th style="padding:9px;text-align:right">Quantidade m³</th></tr></thead><tbody id="proposalRows"></tbody></table>
       </div>
-      <button class="primary" type="button" id="generateProposal">Gerar e guardar proposta</button>
+      <button class="primary" type="button" id="generateProposal">Gerar, guardar e descarregar PDF</button>
       <section class="panel" style="margin-top:16px">
         <div class="panelhead"><div><h3>📁 Arquivo de propostas PDF</h3><div class="sub">Os PDFs ficam guardados neste navegador/dispositivo. Podes exportar, partilhar ou apagar cada proposta.</div></div><button class="secondary" type="button" id="refreshProposalArchive">Atualizar</button></div>
         <div id="proposalArchiveList"><div class="empty">A carregar propostas guardadas…</div></div>
@@ -458,8 +458,22 @@ function renderTaskGroup(listId,items,emptyMessage){
   const actions=document.createElement('div');actions.className='taskactions';
   const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>editTask(t.id);
   const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=t.done?'Reabrir':'Concluir';toggle.onclick=()=>{t.done=!t.done;t.completedAt=t.done?Date.now():null;persist()};
-  actions.append(edit,toggle);content.append(actions);el.append(checkbox,content);list.append(el);
+  actions.append(edit,toggle);
+  if((t.kind||'Tarefa interna')==='Encomenda a fornecedor'){
+    const message=buildOrderMessage(t);
+    const whatsapp=document.createElement('button');whatsapp.type='button';whatsapp.className='secondary';whatsapp.textContent='Enviar WhatsApp';whatsapp.title='Abrir WhatsApp com os dados da encomenda';whatsapp.onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
+    const email=document.createElement('button');email.type='button';email.className='secondary';email.textContent='Enviar email';email.title='Abrir um email com os dados da encomenda';email.onclick=()=>{const subject='Encomenda — '+(t.supplier||t.title);window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(message)};
+    actions.append(whatsapp,email);
+  }
+  content.append(actions);el.append(checkbox,content);list.append(el);
  }
+}
+function buildOrderMessage(t){
+ const lines=['ENCOMENDA A FORNECEDOR','Fornecedor: '+(t.supplier||'Não indicado'),'Encomenda: '+(t.title||'Não indicado'),'Área: '+(t.area||'Geral'),'Prazo: '+(t.due?dateLabel(t.due):'Não definido'),'Prioridade: '+(t.priority||'Não indicada')];
+ if(t.owner)lines.push('Responsável: '+t.owner);
+ if(t.notes)lines.push('Detalhes / quantidades: '+t.notes);
+ lines.push('');lines.push('Agradeço confirmação da encomenda.');
+ return lines.join('\n');
 }
 function localToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function renderTodayPanel(){
@@ -1194,18 +1208,21 @@ function downloadProposal(item){
  const url=URL.createObjectURL(item.blob);const a=document.createElement('a');a.href=url;a.download=item.filename||'Proposta_Restradas.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 async function shareProposal(item,mode){
+ const file=new File([item.blob],item.filename||'Proposta_Restradas.pdf',{type:'application/pdf'});
  const message=`Proposta comercial Restradas${item.ref?' '+item.ref:''}${item.work?' — Obra: '+item.work:''}`;
- // Cada botão respeita a escolha do utilizador. Por segurança, o navegador não permite
- // anexar automaticamente um PDF a mailto ou ao WhatsApp Web; descarrega-se o ficheiro
- // e abre-se a aplicação escolhida com o texto preparado.
+ try{
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+   await navigator.share({title:message,text:message,files:[file]});return;
+  }
+ }catch(err){if(err.name==='AbortError')return;console.warn('Partilha direta indisponível',err)}
  downloadProposal(item);
  if(mode==='email'){
-  const subject=encodeURIComponent(message),body=encodeURIComponent('Segue a proposta comercial em PDF.\n\n'+message+'\n\nAnexa o ficheiro PDF descarregado antes de enviar.');
+  const subject=encodeURIComponent(message),body=encodeURIComponent('Segue a proposta comercial em PDF.\n\n'+message+'\n\nO ficheiro PDF foi descarregado. Anexa-o a este email antes de enviar.');
   window.location.href=`mailto:?subject=${subject}&body=${body}`;
- }else if(mode==='whatsapp'){
-  const text=encodeURIComponent('Segue a proposta comercial em PDF.\n'+message+'\n\nAnexa o ficheiro PDF descarregado antes de enviar.');
+ }else{
+  const text=encodeURIComponent(message+'\n\nO PDF foi descarregado para anexares à mensagem.');
   window.open('https://wa.me/?text='+text,'_blank','noopener');
-  alert('O WhatsApp foi aberto e o PDF foi descarregado. Anexa o ficheiro à conversa antes de enviar.');
+  alert('O PDF foi descarregado. Anexa o ficheiro à conversa do WhatsApp antes de enviar.');
  }
 }
 async function generateConcreteProposal(){
@@ -1230,7 +1247,7 @@ async function generateConcreteProposal(){
  document.body.appendChild(renderHost);
  const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
  pdfDocument.style.cssText+='display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;left:0!important;top:0!important;width:210mm!important;max-width:210mm!important;margin:0!important;padding:0!important;overflow:visible!important;';
- const button=$('generateProposal'),originalLabel=button.textContent;button.disabled=true;button.textContent='A gerar e guardar proposta…';
+ const button=$('generateProposal'),originalLabel=button.textContent;button.disabled=true;button.textContent='A gerar e guardar PDF…';
  try{
   // Esperar que o browser componha o layout e que o logótipo esteja carregado.
   const logoImages=Array.from(pdfDocument.querySelectorAll('img'));
@@ -1245,8 +1262,9 @@ async function generateConcreteProposal(){
   const record={id:(crypto.randomUUID?crypto.randomUUID():'proposal-'+Date.now()+'-'+Math.random().toString(36).slice(2)),ref,client,work,date,filename,blob,createdAt:Date.now()};
   await saveProposalPdf(record);
   renderHost.remove();
+  downloadProposal(record);
   await renderProposalArchive();
-  alert('Proposta gerada e guardada no arquivo desta aplicação. Não foi enviada nem descarregada. Usa os botões da lista quando quiseres abrir ou partilhar o PDF.');
+  alert('PDF gerado, guardado no arquivo de propostas desta aplicação e descarregado para o teu dispositivo. Podes voltar a exportá-lo, enviá-lo por email/WhatsApp ou apagá-lo no arquivo.');
  }catch(err){
   console.error('Erro ao gerar/guardar proposta PDF:',err);
   alert('Não foi possível gerar ou guardar o PDF. '+(err.message||'Verifica se o navegador permite armazenamento local e tenta novamente.'));
