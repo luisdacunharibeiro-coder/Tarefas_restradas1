@@ -136,6 +136,9 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
       <button class="secondary hidden" type="button" id="maintenanceCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
     </form>
     <div class="sectiontitle" style="margin-top:20px"><h2>Registos</h2><span class="sub" id="maintenanceCount">0 registos</span></div>
+    <div class="toolbar area-history-filters" id="maintenanceAreaFilters" style="padding:8px 0 4px">
+      <button class="filter active" type="button" data-maintenance-area="Todas">Todas</button><button class="filter" type="button" data-maintenance-area="Pedreira">⛏️ Pedreira</button><button class="filter" type="button" data-maintenance-area="Betão">🏗️ Central de Betão</button><button class="filter" type="button" data-maintenance-area="Geral">📋 Geral</button>
+    </div>
     <div class="tasklist" id="maintenanceList"></div>
   </section>
 
@@ -165,9 +168,6 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
   <section class="panel hidden" id="breakdownPanel">
     <div class="panelhead"><div><h2>🛠️ Avarias</h2><div class="sub">Histórico por equipamento, estado da avaria e tempo de paragem</div></div><button class="secondary" id="closeBreakdown">Fechar</button></div>
     <div class="breakdown-summary" id="breakdownSummary"></div>
-    <div class="toolbar" id="breakdownFilters" style="padding-bottom:4px">
-      <button class="filter active" data-breakdown-filter="Todas">Todas</button><button class="filter" data-breakdown-filter="Pedreira">⛏️ Pedreira</button><button class="filter" data-breakdown-filter="Betão">🏗️ Central de Betão</button><button class="filter" data-breakdown-filter="Outro">📋 Outro</button>
-    </div>
     <form id="breakdownForm">
       <input id="breakdownId" type="hidden">
       <div class="formgrid">
@@ -186,6 +186,9 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
       <button class="secondary hidden" type="button" id="breakdownCancel" style="width:100%;margin-top:8px">Cancelar edição</button>
     </form>
     <div class="sectiontitle" style="margin-top:20px"><h2>Histórico de avarias</h2><span class="sub" id="breakdownCount">0 registos</span></div>
+    <div class="toolbar area-history-filters" id="breakdownFilters" style="padding:8px 0 4px">
+      <button class="filter active" data-breakdown-filter="Todas">Todas</button><button class="filter" data-breakdown-filter="Pedreira">⛏️ Pedreira</button><button class="filter" data-breakdown-filter="Betão">🏗️ Central de Betão</button><button class="filter" data-breakdown-filter="Outro">📋 Outro</button>
+    </div>
     <div class="searchrow"><input id="breakdownSearch" type="search" placeholder="Pesquisar equipamento ou avaria…" aria-label="Pesquisar avarias"></div>
     <div class="tasklist" id="breakdownList"></div>
   </section>
@@ -744,6 +747,7 @@ $('notifyBtn').onclick=enableNotifications;
 const MAINT_KEY='tarefasRestradasManutencoesV1';
 const CAL_KEY='tarefasRestradasCalibracoesV1';
 let maintenanceRecords=[], calibrationRecords=[];
+let maintenanceAreaFilter='Todas';
 function loadRecords(){
   try{maintenanceRecords=JSON.parse(localStorage.getItem(MAINT_KEY)||'[]');if(!Array.isArray(maintenanceRecords))maintenanceRecords=[]}catch(e){maintenanceRecords=[]}
   try{calibrationRecords=JSON.parse(localStorage.getItem(CAL_KEY)||'[]');if(!Array.isArray(calibrationRecords))calibrationRecords=[]}catch(e){calibrationRecords=[]}
@@ -763,7 +767,8 @@ function showRecordPanel(kind){
 }
 function safeText(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderRecords(kind){
-  const isM=kind==='maintenance', records=isM?maintenanceRecords:calibrationRecords;
+  const isM=kind==='maintenance'; let records=isM?maintenanceRecords:calibrationRecords;
+  if(isM && typeof maintenanceAreaFilter!=='undefined' && maintenanceAreaFilter!=='Todas') records=records.filter(r=>(r.area||'Geral')===maintenanceAreaFilter);
   const list=$(isM?'maintenanceList':'calibrationList');
   $(isM?'maintenanceCount':'calibrationCount').textContent=records.length+' '+(records.length===1?'registo':'registos');
   list.innerHTML='';
@@ -867,6 +872,7 @@ $('breakdownForm').addEventListener('submit',async e=>{e.preventDefault();const 
 $('breakdownCancel').onclick=resetBreakdownForm;$('breakdownSearch').addEventListener('input',renderBreakdowns);$('breakdownFilters').addEventListener('click',e=>{const b=e.target.closest('[data-breakdown-filter]');if(!b)return;breakdownFilter=b.dataset.breakdownFilter;$('breakdownFilters').querySelectorAll('[data-breakdown-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBreakdowns()});
 function showBreakdownPanel(){$('weeklyPanel').classList.add('hidden');$('maintenancePanel').classList.add('hidden');$('calibrationPanel').classList.add('hidden');$('breakdownPanel').classList.remove('hidden');renderBreakdowns();$('breakdownPanel').scrollIntoView({behavior:'smooth',block:'start'})}
 $('breakdownNav').onclick=showBreakdownPanel;$('openBreakdownsFromHome').onclick=showBreakdownPanel;$('closeBreakdown').onclick=()=>$('breakdownPanel').classList.add('hidden');
+$('maintenanceAreaFilters').addEventListener('click',e=>{const b=e.target.closest('[data-maintenance-area]');if(!b)return;maintenanceAreaFilter=b.dataset.maintenanceArea;$('maintenanceAreaFilters').querySelectorAll('[data-maintenance-area]').forEach(x=>x.classList.toggle('active',x===b));renderRecords('maintenance')});
 $('maintenanceNav').onclick=()=>showRecordPanel('maintenance');
 $('calibrationNav').onclick=()=>showRecordPanel('calibration');
 $('closeMaintenance').onclick=()=>$('maintenancePanel').classList.add('hidden');
