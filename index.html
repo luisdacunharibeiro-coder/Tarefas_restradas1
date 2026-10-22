@@ -51,6 +51,12 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:var(--green);col
 .concrete-composition-scroller table th:nth-child(2),.concrete-composition-scroller table td:nth-child(2){position:sticky;left:42px;z-index:3;background:#fff;box-shadow:2px 0 3px rgba(20,45,35,.08);}
 .concrete-composition-scroller table th:nth-child(2){z-index:7;background:#eef4f0;}
 .concrete-composition-scroller table tbody tr:nth-child(even) td:nth-child(1),.concrete-composition-scroller table tbody tr:nth-child(even) td:nth-child(2){background:#f8fbf9;}
+/* Modo de foco: mostrar apenas o módulo de betão */
+body.concrete-focus>header,body.concrete-focus>#cloudPanel{display:none!important;}
+body.concrete-focus main>*:not(#concretePanel){display:none!important;}
+body.concrete-focus #concretePanel{display:block!important;margin-top:0!important;}
+body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;}
+
 </style>
 </head>
 <body>
@@ -1424,9 +1430,9 @@ function importConcreteExcel(file){
   }catch(err){alert('Não foi possível importar as composições: '+err.message)}
  };reader.readAsArrayBuffer(file);
 }
-$('concreteOpen').onclick=()=>{$('concretePanel').classList.remove('hidden');$('concretePanel').scrollIntoView({behavior:'smooth',block:'start'});renderConcrete()};
+$('concreteOpen').onclick=()=>{document.body.classList.add('concrete-focus');$('concretePanel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});renderConcrete()};
 $('concreteNav').onclick=()=>$('concreteOpen').click();
-$('concreteClose').onclick=()=>$('concretePanel').classList.add('hidden');
+$('concreteClose').onclick=()=>{ $('concretePanel').classList.add('hidden');document.body.classList.remove('concrete-focus');window.scrollTo({top:0,behavior:'smooth'}); };
 $('concreteEditClose').onclick=()=>$('concreteEditPanel').classList.add('hidden');
 $('concreteEditSave').onclick=saveConcreteEdit;
 $('concreteTabs').addEventListener('click',e=>{const b=e.target.closest('[data-ctab]');if(b)setConcreteTab(b.dataset.ctab)});
