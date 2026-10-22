@@ -1230,14 +1230,14 @@ function proposalHtml(data){
  #proposalPdfDocument table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.6pt}
  #proposalPdfDocument th{font-weight:bold;text-align:left;border-bottom:1.5px solid #454d48;border-top:1px solid #c6cec9;padding:6px 4px;background:#f0f4f1}
  #proposalPdfDocument td{padding:6px 3px;vertical-align:top;border-bottom:1px solid #d8dedb;overflow-wrap:normal;word-break:normal}
- #proposalPdfDocument th:nth-child(1),#proposalPdfDocument td:nth-child(1){width:7%;white-space:nowrap}
- #proposalPdfDocument th:nth-child(2),#proposalPdfDocument td:nth-child(2){width:55%;white-space:nowrap;font-size:7.4pt;letter-spacing:-.1px}
+ #proposalPdfDocument th:nth-child(1),#proposalPdfDocument td:nth-child(1){width:14%;white-space:nowrap}
+ #proposalPdfDocument th:nth-child(2),#proposalPdfDocument td:nth-child(2){width:48%;white-space:normal;font-size:7.4pt;letter-spacing:-.1px;overflow-wrap:anywhere}
  #proposalPdfDocument th:nth-child(3),#proposalPdfDocument td:nth-child(3){width:10%;white-space:nowrap}
  #proposalPdfDocument th:nth-child(4),#proposalPdfDocument td:nth-child(4){width:7%;white-space:nowrap}
  #proposalPdfDocument th:nth-child(5),#proposalPdfDocument td:nth-child(5){width:10.5%;white-space:nowrap}
  #proposalPdfDocument th:nth-child(6),#proposalPdfDocument td:nth-child(6){width:10.5%;white-space:nowrap}
  #proposalPdfDocument thead{display:table-header-group}#proposalPdfDocument tr{break-inside:avoid!important;page-break-inside:avoid!important}#proposalPdfDocument img{max-width:100%;height:auto}
- #proposalPdfDocument .item{width:7%}#proposalPdfDocument .quantity{width:10%}#proposalPdfDocument .unit{width:7%}#proposalPdfDocument .price{width:10.5%}
+ #proposalPdfDocument .item{width:14%}#proposalPdfDocument .quantity{width:10%}#proposalPdfDocument .unit{width:7%}#proposalPdfDocument .price{width:10.5%}
  #proposalPdfDocument .right{text-align:right;white-space:normal}#proposalPdfDocument .center{text-align:center}
  #proposalPdfDocument .conditions{margin-top:15px;font-size:8.5pt;break-inside:auto;page-break-inside:auto}
  #proposalPdfDocument .conditions h2{text-align:center;font-size:11pt;margin:0 0 10px;letter-spacing:.3px}
@@ -1341,9 +1341,8 @@ async function generateConcreteProposal(){
   const record={id:(crypto.randomUUID?crypto.randomUUID():'proposal-'+Date.now()+'-'+Math.random().toString(36).slice(2)),ref,client,work,date,filename,blob,createdAt:Date.now()};
   await saveProposalPdf(record);
   renderHost.remove();
-  downloadProposal(record);
   await renderProposalArchive();
-  alert('PDF gerado, guardado no arquivo de propostas desta aplicação e descarregado para o teu dispositivo. Podes voltar a exportá-lo, enviá-lo por email/WhatsApp ou apagá-lo no arquivo.');
+  alert('Proposta gerada e guardada no arquivo desta aplicação. Não foi descarregada automaticamente. Usa os botões Exportar, Email ou WhatsApp no arquivo para escolher o que fazer.');
  }catch(err){
   console.error('Erro ao gerar/guardar proposta PDF:',err);
   alert('Não foi possível gerar ou guardar o PDF. '+(err.message||'Verifica se o navegador permite armazenamento local e tenta novamente.'));
