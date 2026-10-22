@@ -914,6 +914,11 @@ function saveConcreteData(){
   renderConcrete();renderProposalRows();queueCloudSave();
 }
 function euro(v){return (Number(v)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2});}
+function euroUnit(v,materialKey=''){
+ const fourDecimalMaterials=new Set(['sandFine','sandMedium','gravel410','gravel814','gravel1122','filler','water']);
+ const decimals=(materialKey==='cementII'||materialKey==='cementI')?5:(fourDecimalMaterials.has(materialKey)?4:5);
+ return (Number(v)||0).toLocaleString('pt-PT',{minimumFractionDigits:decimals,maximumFractionDigits:decimals})+' €/kg';
+}
 function num(v,d=3){return (Number(v)||0).toLocaleString('pt-PT',{minimumFractionDigits:0,maximumFractionDigits:d});}
 function concreteRawCost(c){
   // As quantidades vêm de duas colunas distintas do Excel:
@@ -938,14 +943,27 @@ function concreteSalePrice(c){const cost=concreteRawCost(c).total;return cost*(1
 function concreteBreakdown(c){
  const costs=concreteRawCost(c);
  const lines=[];
- concreteMaterialMeta.forEach(([k,label])=>{if(k==='cementII'||k==='cementI')return;const qty=Number(c[k])||0,unit=Number(concreteCosts[k])||0;if(qty)lines.push(`${label}: ${num(qty)} kg × ${euro(unit)}/kg = ${euro(qty*unit)}`)});
- if(costs.cementIIQty)lines.push(`CEM II/A-L 42,5R: ${num(costs.cementIIQty)} kg × ${euro(costs.cementIIUnitPrice)}/kg = ${euro(costs.cementIICost)}`);
- if(costs.cementIQty)lines.push(`CEM I/A-L 52,5R: ${num(costs.cementIQty)} kg × ${euro(costs.cementIUnitPrice)}/kg = ${euro(costs.cementICost)}`);
+ // Ordem habitual do utilizador: areias, britas, cimentos, filer, água e adjuvantes.
+ const cementLines={
+  cementII: costs.cementIIQty ? `CEM II/A-L 42,5R: ${num(costs.cementIIQty)} kg × ${euroUnit(costs.cementIIUnitPrice,'cementII')} = ${euro(costs.cementIICost)}` : '',
+  cementI: costs.cementIQty ? `CEM I/A-L 52,5R: ${num(costs.cementIQty)} kg × ${euroUnit(costs.cementIUnitPrice,'cementI')} = ${euro(costs.cementICost)}` : ''
+ };
+ concreteMaterialMeta.forEach(([k,label])=>{
+  if(k==='cementII'||k==='cementI'){
+   if(cementLines[k])lines.push(cementLines[k]);
+   return;
+  }
+  const qty=Number(c[k])||0,unit=Number(concreteCosts[k])||0;
+  if(qty)lines.push(`${label}: ${num(qty)} kg × ${euroUnit(unit,k)} = ${euro(qty*unit)}`);
+ });
  if((Number(c.cementII)||0)===0&&(Number(c.cementI)||0)>0)lines.unshift('⚠️ Esta composição utiliza apenas CEM I 52,5R; não foi contabilizado CEM II 42,5R.');
  else if((Number(c.cementII)||0)>0&&(Number(c.cementI)||0)>0)lines.unshift('Esta composição utiliza os dois cimentos; cada quantidade é valorizada ao preço unitário respetivo.');
  [['extra1Name','extra1Qty','extra1Price'],['extra2Name','extra2Qty','extra2Price']].forEach(([nk,qk,pk])=>{const q=Number(c[qk])||0;if(q)lines.push(`${c[nk]||'Material extra'}: ${num(q)} kg × ${euro(c[pk])}/kg = ${euro(q*(Number(c[pk])||0))}`)});
  lines.push(`Energia: ${euro(costs.energy)}/m³`,`Custos operacionais: ${euro(costs.operations)}/m³`,`Custo total de produção: ${euro(costs.total)}/m³`,`Margem: ${num(c.margin??23,1)}%`,`Transporte: ${euro(c.transport??14)}/m³`,`Preço de venda: ${euro(concreteSalePrice(c))}/m³`);
- return lines.join('\n');
+ return lines.map(line=>{
+  const safe=line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return safe.startsWith('Custo total de produção:') ? `<strong>${safe}</strong>` : safe;
+ }).join('<br>');
 }
 function renderConcrete(){
  const q=($('concreteSearch')?.value||'').trim().toLocaleLowerCase('pt-PT');
@@ -1002,7 +1020,7 @@ function openConcreteEdit(code){
  const seenMaterialKeys=new Set();
  concreteMaterialMeta.forEach(([key,label])=>{if(seenMaterialKeys.has(key))return;seenMaterialKeys.add(key);const wrap=document.createElement('div');const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='ccqty_'+key;const inp=document.createElement('input');inp.type='number';inp.min='0';inp.step='0.01';inp.id='ccqty_'+key;inp.value=Number(c[key]||0);inp.style.width='100%';wrap.append(lab,inp);qtyBox.append(wrap)});
  ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>{const id='cc'+k[0].toUpperCase()+k.slice(1);$(id).value=c[k]??''});
- $('concreteEditCostBreakdown').textContent=concreteBreakdown(c);
+ $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
  $('concreteEditPanel').classList.remove('hidden');$('concreteEditPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function saveConcreteEdit(){
@@ -1010,7 +1028,7 @@ function saveConcreteEdit(){
  c.margin=Math.max(0,Number($('ccMargin').value)||0);c.transport=Math.max(0,Number($('ccTransport').value)||0);
  concreteMaterialMeta.forEach(([key])=>{const inp=$('ccqty_'+key);if(inp)c[key]=Math.max(0,Number(inp.value)||0)});
  ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>{const id='cc'+k[0].toUpperCase()+k.slice(1);c[k]=k.endsWith('Name')?$(id).value.trim():Math.max(0,Number($(id).value)||0)});
- $('concreteEditCostBreakdown').textContent=concreteBreakdown(c);saveConcreteData();$('concreteEditCostBreakdown').textContent=concreteBreakdown(c);
+ $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);saveConcreteData();$('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
 }
 function setConcreteTab(tab){
  const tabs=['compositions','materials','simulator','proposal'];
