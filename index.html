@@ -293,12 +293,12 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
         <div id="simLibraryList" class="tasklist" style="margin-top:8px"></div>
       </div>
       <div id="simMaterialFields" class="formgrid"></div>
+      <div class="full"><h3 style="margin:8px 0 0">Materiais extra nesta composição</h3><p class="sub">Seleciona materiais da biblioteca e indica a dosagem em kg/m³. O custo é incluído automaticamente.</p></div>
+      <div id="simCustomMaterialRows" class="formgrid"></div><button type="button" class="secondary" id="simAddCustomMaterial">+ Adicionar material extra à composição</button>
       <div class="tasknotes" id="simResult"></div>
       <button class="primary" type="button" id="simCalculate">Calcular custo da composição</button>
       <div class="formgrid" style="margin-top:8px"><button class="secondary" type="button" id="simPdf">Gerar PDF das quantidades</button><button class="secondary" type="button" id="simWhatsapp">PDF + WhatsApp</button><button class="secondary" type="button" id="simEmail">PDF + Email</button></div>
       <button class="secondary" type="button" id="simSave" style="width:100%;margin-top:8px" disabled>Guardar no módulo</button>
-      <div class="full"><h3 style="margin:8px 0 0">Materiais extra nesta composição</h3><p class="sub">Seleciona materiais da biblioteca e indica a dosagem em kg/m³. O custo é incluído automaticamente.</p></div>
-      <div id="simCustomMaterialRows" class="formgrid"></div><button type="button" class="secondary" id="simAddCustomMaterial">+ Adicionar material extra à composição</button>
     </div>
     <div id="concreteProposalTab" class="hidden">
       <div class="formgrid">
@@ -996,7 +996,6 @@ function concreteRawCost(c){
   const cementIICost=cementIIQty*cementIIUnitPrice;
   const cementICost=cementIQty*cementIUnitPrice;
   materials+=cementIICost+cementICost;
-  materials+=qty('extra1Qty')*qty('extra1Price')+qty('extra2Qty')*qty('extra2Price');
   if(Array.isArray(c.customMaterials))materials+=c.customMaterials.reduce((sum,m)=>sum+Math.max(0,Number(m.qty)||0)*Math.max(0,Number(m.price)||0),0);
   const energy=price('energy'), operations=price('operations');
   return {materials,cementIIQty,cementIQty,cementIIUnitPrice,cementIUnitPrice,cementIICost,cementICost,energy,operations,total:materials+energy+operations};
@@ -1020,7 +1019,6 @@ function concreteBreakdown(c){
  });
  if((Number(c.cementII)||0)===0&&(Number(c.cementI)||0)>0)lines.unshift('⚠️ Esta composição utiliza apenas CEM I 52,5R; não foi contabilizado CEM II 42,5R.');
  else if((Number(c.cementII)||0)>0&&(Number(c.cementI)||0)>0)lines.unshift('Esta composição utiliza os dois cimentos; cada quantidade é valorizada ao preço unitário respetivo.');
- [['extra1Name','extra1Qty','extra1Price'],['extra2Name','extra2Qty','extra2Price']].forEach(([nk,qk,pk])=>{const q=Number(c[qk])||0;if(q)lines.push(`${c[nk]||'Material extra'}: ${num(q)} kg × ${euro(c[pk])}/kg = ${euro(q*(Number(c[pk])||0))}`)});
  lines.push(`Energia: ${euro(costs.energy)}/m³`,`Custos operacionais: ${euro(costs.operations)}/m³`,`Custo total de produção: ${euro(costs.total)}/m³`,`Margem: ${num(c.margin??23,1)}%`,`Transporte: ${euro(c.transport??14)}/m³`,`Preço de venda: ${euro(concreteSalePrice(c))}/m³`);
  return lines.map(line=>{
   const safe=line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1081,7 +1079,6 @@ function openConcreteEdit(code){
  // Cada material tem uma única linha no editor; os dois tipos de cimento mantêm campos próprios.
  const seenMaterialKeys=new Set();
  concreteMaterialMeta.forEach(([key,label])=>{if(seenMaterialKeys.has(key))return;seenMaterialKeys.add(key);const wrap=document.createElement('div');const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='ccqty_'+key;const inp=document.createElement('input');inp.type='number';inp.min='0';inp.step='0.01';inp.id='ccqty_'+key;inp.value=Number(c[key]||0);inp.style.width='100%';wrap.append(lab,inp);qtyBox.append(wrap)});
- ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>{const id='cc'+k[0].toUpperCase()+k.slice(1);$(id).value=c[k]??''});
  $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
  $('concreteEditPanel').classList.remove('hidden');$('concreteEditPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1089,7 +1086,6 @@ function saveConcreteEdit(){
  const c=concreteCompositions.find(x=>String(x.code)===String(concreteEditingCode));if(!c)return;
  c.margin=Math.max(0,Number($('ccMargin').value)||0);c.transport=Math.max(0,Number($('ccTransport').value)||0);
  concreteMaterialMeta.forEach(([key])=>{const inp=$('ccqty_'+key);if(inp)c[key]=Math.max(0,Number(inp.value)||0)});
- ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>{const id='cc'+k[0].toUpperCase()+k.slice(1);c[k]=k.endsWith('Name')?$(id).value.trim():Math.max(0,Number($(id).value)||0)});
  $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);saveConcreteData();$('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
 }
 const SIM_MATERIAL_LIBRARY_KEY='restradasSimuladorMateriaisExtraV1';
@@ -1109,19 +1105,17 @@ function setConcreteTab(tab){
 }
 function renderSimulatorFields(){
  const box=$('simMaterialFields');box.innerHTML='';
- const keys=[...concreteMaterialMeta.map(x=>x[0]),'extra1Qty','extra2Qty'];
+ const keys=[...concreteMaterialMeta.map(x=>x[0])];
  keys.forEach(k=>{
-  const meta=concreteMaterialMeta.find(x=>x[0]===k);const label=meta?meta[1]:(k==='extra1Qty'?'Material extra 1 — quantidade':'Material extra 2 — quantidade');
+  const meta=concreteMaterialMeta.find(x=>x[0]===k);const label=meta?meta[1]:k;
   const wrap=document.createElement('div');const lab=document.createElement('label');lab.htmlFor='sim_'+k;lab.textContent=label+(k.endsWith('Qty')?' (kg/m³)':' (kg/m³)');
   const inp=document.createElement('input');inp.id='sim_'+k;inp.type='number';inp.min='0';inp.step='0.001';inp.value='0';wrap.append(lab,inp);box.append(wrap);
  });
- [['extra1Name','Nome do material extra 1'],['extra1Price','Preço material extra 1 (€/kg)'],['extra2Name','Nome do material extra 2'],['extra2Price','Preço material extra 2 (€/kg)']].forEach(([k,label])=>{const wrap=document.createElement('div');const lab=document.createElement('label');lab.htmlFor='sim_'+k;lab.textContent=label;const inp=document.createElement('input');inp.id='sim_'+k;inp.type=k.endsWith('Price')?'number':'text';if(inp.type==='number'){inp.min='0';inp.step='0.0001';inp.value='0'}wrap.append(lab,inp);box.append(wrap)});
  concreteSimulatorDraft=null;$('simSave').disabled=true;$('simResult').textContent='';
 }
 function readSimulator(){
  const c={code:$('simCode').value.trim()||'SIM-'+Date.now().toString().slice(-6),name:$('simName').value.trim(),margin:Number($('simMargin').value)||0,transport:Number($('simTransport').value)||0};
  concreteMaterialMeta.forEach(([k])=>c[k]=Math.max(0,Number($('sim_'+k).value)||0));
- ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>{c[k]=k.endsWith('Name')?($('sim_'+k).value.trim()):Math.max(0,Number($('sim_'+k).value)||0)});
  c.customMaterials=readSimulatorCustomMaterials();
  return c;
 }
@@ -1139,7 +1133,7 @@ function saveSimulator(){
  concreteCompositions.push(c);saveConcreteData();alert('Composição adicionada ao módulo.');setConcreteTab('compositions');
 }
 function makeMiniAction(label,fn){const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;b.style.cssText='margin:3px;padding:6px 8px;font-size:11px';b.onclick=fn;return b}
-function compositionQuantityLines(c){const lines=[];concreteMaterialMeta.forEach(([k,label])=>{const q=Number(c[k])||0;if(q>0)lines.push({label,qty:q,unit:'kg/m³'})});[['extra1Name','extra1Qty'],['extra2Name','extra2Qty']].forEach(([nk,qk])=>{const q=Number(c[qk])||0;if(q>0)lines.push({label:c[nk]||'Material extra',qty:q,unit:'kg/m³'})});if(Array.isArray(c.customMaterials))c.customMaterials.forEach(m=>{if((Number(m.qty)||0)>0)lines.push({label:m.name||'Material extra',qty:Number(m.qty)||0,unit:'kg/m³'})});return lines}
+function compositionQuantityLines(c){const lines=[];concreteMaterialMeta.forEach(([k,label])=>{const q=Number(c[k])||0;if(q>0)lines.push({label,qty:q,unit:'kg/m³'})});if(Array.isArray(c.customMaterials))c.customMaterials.forEach(m=>{if((Number(m.qty)||0)>0)lines.push({label:m.name||'Material extra',qty:Number(m.qty)||0,unit:'kg/m³'})});return lines}
 function compositionSheetHtml(c,clientName="",workName="",showProductionCost=false){const lines=compositionQuantityLines(c);const water=Number(c.water)||0;const cement=(Number(c.cementII)||0)+(Number(c.cementI)||0);const filler=Number(c.filler)||0;const binder=cement*0.85+filler;const waterBinder=binder>0?water/binder:null;const raw=concreteRawCost(c);const costBlock=showProductionCost?`<div style="margin-top:18px;padding:12px;border:1px solid #ccd8d1;border-radius:8px"><strong>Custos internos de produção</strong><p>Matérias-primas/adjuvantes: ${euro(raw.materials)}/m³</p><p>Energia: ${euro(raw.energy)}/m³</p><p>Custos operacionais: ${euro(raw.operations)}/m³</p><p><strong>Custo total de produção: ${euro(raw.total)}/m³</strong></p><p>Margem: ${num(c.margin,1)}% · Transporte: ${euro(c.transport)}/m³ · Preço de venda estimado: ${euro(concreteSalePrice(c))}/m³</p></div>`:'';return `<div id="compositionPdfSheet" style="font-family:Arial,sans-serif;color:#18231f;width:180mm;padding:10mm;background:#fff"><div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #173b32;padding-bottom:10px;margin-bottom:18px"><img src="${document.querySelector('.brandline img')?.src||''}" alt="Logótipo Restradas" style="max-width:34mm;max-height:18mm;object-fit:contain"><div><h1 style="color:#173b32;margin:0;font-size:18px">Restradas - Revitalização de Estradas do Norte, Lda.</h1><p style="margin:4px 0;color:#68756f">Ficha de composição de betão · Dosagens por m³</p></div></div><h2 style="font-size:19px">${safeText(c.name||'Composição sem designação')}</h2><p><strong>Código:</strong> ${safeText(c.code||'—')}</p><p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-PT')}</p>${clientName?`<p><strong>Cliente:</strong> ${safeText(clientName)}</p>`:""}${workName?`<p><strong>Obra:</strong> ${safeText(workName)}</p>`:""}<table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:12px"><thead><tr style="background:#e8f3ed"><th style="text-align:left;padding:10px;border:1px solid #ccd8d1">Material</th><th style="text-align:right;padding:10px;border:1px solid #ccd8d1">Quantidade</th><th style="text-align:left;padding:10px;border:1px solid #ccd8d1">Unidade</th></tr></thead><tbody>${lines.map(x=>`<tr><td style="padding:9px;border:1px solid #ccd8d1">${safeText(x.label)}</td><td style="padding:9px;text-align:right;border:1px solid #ccd8d1">${num(x.qty,3)}</td><td style="padding:9px;border:1px solid #ccd8d1">${x.unit}</td></tr>`).join('')||'<tr><td colspan="3" style="padding:10px;border:1px solid #ccd8d1">Não existem dosagens registadas.</td></tr>'}</tbody></table><div style="margin-top:20px;padding:12px;background:#f4f6f5;border-radius:8px;font-size:13px"><strong>Relação água/ligante equivalente:</strong> ${waterBinder===null?'Não calculável':num(waterBinder,3)}<p style="margin:6px 0 0;color:#68756f;font-size:11px">Cálculo: água ÷ [(cimento × 0,85) + filer]</p></div>${costBlock}<p style="margin-top:24px;font-size:10px;color:#68756f">Documento de apoio à produção. Confirmar dosagens e condições de fabrico antes da utilização.</p></div>`}
 async function exportCompositionSheet(c,mode='download') {
  const showProductionCost=confirm('Pretende mostrar o custo de produção no PDF?\n\nOK = mostrar custos internos\nCancelar = ocultar custos internos');
