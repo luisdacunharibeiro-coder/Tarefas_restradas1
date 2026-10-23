@@ -252,10 +252,10 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
         <div><label for="concreteReferenceFilter">Filtrar por referência (BET...)</label><input id="concreteReferenceFilter" type="search" placeholder="Ex.: BET.1002 ou BET.10" autocomplete="off"><div class="sub" style="margin-top:4px">Mostra apenas as composições cuja referência contém o texto indicado.</div></div>
         <div><label for="concreteSearch">Pesquisar por designação ou classe</label><input id="concreteSearch" type="search" placeholder="Ex.: C30/37 ou betão leve"></div>
         <div><label for="concreteImportFile">Importar Excel de composições</label><input id="concreteImportFile" type="file" accept=".xlsx,.xls"></div>
-        <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Incluir colunas comerciais: preço de custo, preço final, margem e transporte</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Sem o visto, exporta apenas a composição e as respetivas dosagens, mantendo o layout base da folha enviada.</div></div>
+        <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Mostrar colunas de análise: margem, transporte, custo de produção e custo final</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Com o visto, acrescenta margem, transporte, custo de produção e custo final. Sem o visto, oculta essas quatro colunas e mantém apenas a designação/código e as dosagens, no layout do Excel original.</div></div>
       </div>
       <div class="sub" style="margin:8px 0">A importação utiliza exclusivamente a folha <strong>02.10.2026</strong>. Os preços e os custos operacionais podem ser editados no separador “Preços dos materiais”.</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Modo lista completa: assinala os betões que queres e depois clica em “Mostrar apenas os betões com visto”.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="secondary" id="concreteToggleSelectedView">Mostrar apenas os betões com visto</button><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Modo lista completa: assinala os betões que queres e depois clica em “Mostrar apenas os betões com visto”.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="concreteAddNewComposition">+ Adicionar composição nova</button><button type="button" class="secondary" id="concreteToggleSelectedView">Mostrar apenas os betões com visto</button><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div></div>
       <div id="concreteSummary" class="breakdown-summary"></div>
       <div id="concreteCompositionScroller" class="concrete-composition-scroller" style="max-height:650px;border:1px solid var(--line);border-radius:12px">
         <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:910px;table-layout:fixed">
@@ -282,6 +282,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
     <div id="concreteSimulatorTab" class="hidden">
       <p class="sub">Cria uma composição experimental com dosagens em kg/m³. Os preços usam os valores configurados no separador de materiais.</p>
       <div class="formgrid">
+        <div class="full"><label for="simBaseComposition">Carregar composição existente (opcional)</label><select id="simBaseComposition"><option value="">Criar composição de raiz…</option></select><div class="sub">Escolhe uma composição da lista geral para copiar as dosagens para esta simulação. A composição original não será alterada.</div></div>
         <div class="full"><label for="simName">Designação da nova composição *</label><input id="simName" placeholder="Ex.: C30/37 S3 D22" required></div>
         <div><label for="simCode">Código (opcional)</label><input id="simCode" placeholder="SIM-001"></div>
         <div><label for="simMargin">Margem (%)</label><input id="simMargin" type="number" value="23" min="0" step="0.1"></div>
@@ -1104,6 +1105,7 @@ function setConcreteTab(tab){
  if(tab==='materials')renderConcreteCosts();if(tab==='simulator'){renderSimulatorFields();renderSimulatorLibrary();renderSimulatorCustomRows();}if(tab==='proposal')renderProposalRows();
 }
 function renderSimulatorFields(){
+ const selector=$('simBaseComposition');if(selector){const selected=selector.value;selector.innerHTML='<option value="">Criar composição de raiz…</option>'+concreteCompositions.map(c=>'<option value="'+safeText(c.code)+'">'+safeText((c.code?c.code+' · ':'')+c.name)+'</option>').join('');if(concreteCompositions.some(c=>String(c.code)===String(selected)))selector.value=selected;}
  const box=$('simMaterialFields');box.innerHTML='';
  const keys=[...concreteMaterialMeta.map(x=>x[0])];
  keys.forEach(k=>{
@@ -1113,6 +1115,16 @@ function renderSimulatorFields(){
  });
  concreteSimulatorDraft=null;$('simSave').disabled=true;$('simResult').textContent='';
 }
+function loadSimulatorBaseComposition(){
+ const code=$('simBaseComposition')?.value;
+ if(!code){concreteMaterialMeta.forEach(([k])=>{const input=$('sim_'+k);if(input)input.value='0'});$('simName').value='';$('simCode').value='';$('simMargin').value='23';$('simTransport').value='14';concreteSimulatorDraft=null;$('simSave').disabled=true;$('simResult').textContent='';return;}
+ const base=concreteCompositions.find(c=>String(c.code)===String(code));if(!base)return;
+ $('simName').value=base.name||'';$('simCode').value='SIM-'+String(base.code||'').replace(/[^a-zA-Z0-9]/g,'').slice(-12);$('simMargin').value=base.margin??23;$('simTransport').value=base.transport??14;
+ concreteMaterialMeta.forEach(([k])=>{const input=$('sim_'+k);if(input)input.value=Number(base[k]||0)});
+ const extras=Array.isArray(base.customMaterials)?base.customMaterials:[];const box=$('simCustomMaterialRows');box.dataset.count=String(Math.max(1,extras.length));renderSimulatorCustomRows();extras.forEach((m,i)=>{const found=simulatorExtraLibrary.find(x=>String(x.id)===String(m.id)||x.name===m.name);if($('simCustomMaterial_'+i))$('simCustomMaterial_'+i).value=found?.id||'';if($('simCustomQty_'+i))$('simCustomQty_'+i).value=Number(m.qty||0)});
+ concreteSimulatorDraft=null;$('simSave').disabled=true;$('simResult').textContent='Composição carregada para simulação. As alterações serão aplicadas apenas à nova simulação.';
+}
+$('simBaseComposition').addEventListener('change',loadSimulatorBaseComposition);
 function readSimulator(){
  const c={code:$('simCode').value.trim()||'SIM-'+Date.now().toString().slice(-6),name:$('simName').value.trim(),margin:Number($('simMargin').value)||0,transport:Number($('simTransport').value)||0};
  concreteMaterialMeta.forEach(([k])=>c[k]=Math.max(0,Number($('sim_'+k).value)||0));
@@ -1393,14 +1405,14 @@ function exportConcreteExcel(){
   // Atualizar o título com a data base da folha enviada e manter a nota de cálculo original.
   put('A2','Composições de betão 02/10/2026','A2');
   // Opcionalmente, acrescentar as quatro colunas comerciais à direita da composição.
-  const commercialHeaders=['Preço de custo (€/m³)','Preço final (€/m³)','Margem (%)','Transporte (€/m³)'];
+  const commercialHeaders=['Margem (%)','Transporte (€/m³)','Custo de produção (€/m³)','Custo final (€/m³)'];
   const commercialCols=['R','S','T','U'];
   if(includeCommercial){
    put('R4','Análise comercial','P4');
    commercialHeaders.forEach((h,i)=>put(commercialCols[i]+'5',h,'Q5'));
    concreteCompositions.forEach((comp,i)=>{
     const r=6+i,raw=concreteRawCost(comp);
-    const vals=[Number(raw.total.toFixed(4)),Number(concreteSalePrice(comp).toFixed(4)),Number(comp.margin??23),Number(comp.transport??14)];
+    const vals=[Number(comp.margin??23),Number(comp.transport??14),Number(raw.total.toFixed(4)),Number(concreteSalePrice(comp).toFixed(4))];
     vals.forEach((v,j)=>put(commercialCols[j]+r,v,'Q'+Math.min(r,243)));
    });
    ws['!merges']=(ws['!merges']||[]).filter(m=>!(m.s.r===3&&m.s.c>=17));
@@ -1462,6 +1474,7 @@ $('concreteResetDefaults').addEventListener('click',()=>{if(!confirm('Repor a ma
 $('concreteSaveCosts').onclick=()=>{Object.keys(concreteCosts).forEach(k=>{const el=$('cost_'+k);if(el)concreteCosts[k]=Math.max(0,Number(el.value)||0)});saveConcreteData();alert('Preços unitários e custos operacionais guardados.')};
 $('concreteImportFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)importConcreteExcel(f);e.target.value=''});
 $('concreteExportExcel').onclick=exportConcreteExcel;
+$('concreteAddNewComposition').addEventListener('click',()=>{setConcreteTab('simulator');$('simBaseComposition').value='';loadSimulatorBaseComposition();$('simName').focus();});
 $('simCalculate').onclick=calcSimulator;$('simSave').onclick=saveSimulator;
 $('generateProposal').onclick=generateConcreteProposal;
 $('refreshProposalArchive').onclick=renderProposalArchive;
