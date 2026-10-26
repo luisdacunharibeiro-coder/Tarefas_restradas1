@@ -1507,12 +1507,20 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
   <div class="panelhead"><div><h2 id="manualsTitle">📚 Manuais/Documentos</h2><div class="sub">Consulta técnica — Restradas | Gestão Operacional</div></div><button class="secondary" id="closeManuals" type="button">Fechar ✕</button></div>
 
   <div class="panel" id="pdfLibraryPanel" style="margin-bottom:12px">
-   <div class="panelhead"><div><h2>📄 Os meus PDFs</h2><div class="sub">Importa e guarda documentos para consultar ou partilhar no telemóvel</div></div></div>
-   <label for="manualPdfInput">Importar ficheiros PDF</label>
-   <input id="manualPdfInput" type="file" accept="application/pdf,.pdf" multiple>
-   <div class="sub" style="margin-top:7px">Os documentos ficam guardados neste dispositivo/navegador. Para os ter noutro dispositivo, importa-os também aí.</div>
-   <div id="manualPdfStatus" class="sub" aria-live="polite" style="margin-top:8px"></div>
-   <div id="manualPdfList" class="tasklist" style="margin-top:12px"><div class="empty"><strong>Ainda não há PDFs importados</strong>Seleciona os ficheiros acima para criar a tua lista.</div></div>
+   <div class="panelhead"><div><h2>📁 Pastas de documentos</h2><div class="sub">Escolhe a pasta onde queres guardar e consultar os PDFs.</div></div></div>
+   <div class="toolbar" id="manualFolderTabs" style="padding:4px 0 12px">
+    <button type="button" class="filter active" data-manual-folder="Betão">🏗️ Betão</button>
+    <button type="button" class="filter" data-manual-folder="Pedreira">⛏️ Pedreira</button>
+    <button type="button" class="filter" data-manual-folder="Geral">📋 Geral</button>
+   </div>
+   <div class="panel" style="background:#f7faf8;margin-bottom:10px;padding:12px">
+    <div class="panelhead"><div><h3 id="manualFolderHeading" style="margin:0">🏗️ Pasta Betão</h3><div class="sub" id="manualFolderHelp">Os PDFs importados serão guardados nesta pasta.</div></div></div>
+    <label for="manualPdfInput">Adicionar PDFs à pasta selecionada</label>
+    <input id="manualPdfInput" type="file" accept="application/pdf,.pdf" multiple>
+    <div class="sub" style="margin-top:7px">Os documentos ficam guardados neste dispositivo/navegador. Para os ter noutro dispositivo, importa-os também aí.</div>
+    <div id="manualPdfStatus" class="sub" aria-live="polite" style="margin-top:8px"></div>
+   </div>
+   <div id="manualPdfList" class="tasklist" style="margin-top:12px"><div class="empty"><strong>Esta pasta ainda não tem PDFs</strong>Seleciona ficheiros acima para os adicionar.</div></div>
   </div>
 
  </section>
@@ -1522,9 +1530,13 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
  const input=document.getElementById('manualPdfInput');
  const list=document.getElementById('manualPdfList');
  const status=document.getElementById('manualPdfStatus');
+ const tabs=[...document.querySelectorAll('[data-manual-folder]')];
+ const heading=document.getElementById('manualFolderHeading');
+ const help=document.getElementById('manualFolderHelp');
  if(!input||!list)return;
  const DB='restradasManualPdfLibraryV1', STORE='pdfs';
- let db;
+ const folderLabels={'Betão':'🏗️ Pasta Betão','Pedreira':'⛏️ Pasta Pedreira','Geral':'📋 Pasta Geral'};
+ let currentFolder='Betão', db;
  function openDb(){return new Promise((resolve,reject)=>{
   const req=indexedDB.open(DB,1);
   req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true})};
@@ -1532,45 +1544,63 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
  })}
  function allPdfs(){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readonly').objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}
  function addPdf(record){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).add(record);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+ function updatePdf(pdf){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(pdf);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
  function deletePdf(id){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
  function formatSize(n){return n<1024*1024?Math.max(1,Math.round(n/1024))+' KB':(n/1024/1024).toFixed(1)+' MB'}
  function downloadPdf(pdf){const url=URL.createObjectURL(pdf.blob);const a=document.createElement('a');a.href=url;a.download=pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
  async function sharePdf(pdf,preferEmail){
   const file=new File([pdf.blob],pdf.name,{type:'application/pdf'});
   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-   try{await navigator.share({title:pdf.name, text:preferEmail?'Documento PDF: '+pdf.name:pdf.name,files:[file]});return}catch(e){if(e.name==='AbortError')return}
+   try{await navigator.share({title:pdf.name,text:preferEmail?'Documento PDF: '+pdf.name:pdf.name,files:[file]});return}catch(e){if(e.name==='AbortError')return}
   }
   downloadPdf(pdf);
   if(preferEmail){const subject=encodeURIComponent(pdf.name);const body=encodeURIComponent('O PDF foi descarregado para o dispositivo. Anexa o ficheiro "'+pdf.name+'" a este e-mail antes de enviar.');window.location.href='mailto:?subject='+subject+'&body='+body;status.textContent='O PDF foi descarregado. Anexa-o manualmente ao e-mail.'}
   else status.textContent='A partilha direta não está disponível neste navegador. O PDF foi descarregado para poderes anexá-lo manualmente.';
  }
  function button(label,fn){const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;b.addEventListener('click',fn);return b}
+ function folderSelect(pdf){const select=document.createElement('select');select.setAttribute('aria-label','Mover PDF para outra pasta');select.style.cssText='padding:7px;border:1px solid var(--line);border-radius:8px;max-width:100%';['Betão','Pedreira','Geral'].forEach(folder=>{const opt=document.createElement('option');opt.value=folder;opt.textContent='Mover para: '+folder;if((pdf.folder||'Geral')===folder)opt.selected=true;select.append(opt)});select.addEventListener('change',async()=>{pdf.folder=select.value;await updatePdf(pdf);await render()});return select}
  async function render(){
-  const docs=await allPdfs();list.innerHTML='';
-  if(!docs.length){list.innerHTML='<div class="empty"><strong>Ainda não há PDFs importados</strong>Seleciona os ficheiros acima para criar a tua lista.</div>';return}
-  docs.sort((a,b)=>b.created-a.created).forEach(pdf=>{
+  const docs=await allPdfs();
+  tabs.forEach(t=>t.classList.toggle('active',t.dataset.manualFolder===currentFolder));
+  heading.textContent=folderLabels[currentFolder];
+  help.textContent='Os PDFs importados serão guardados na pasta '+currentFolder+'.';
+  list.innerHTML='';
+  const folderDocs=docs.filter(pdf=>(pdf.folder||'Geral')===currentFolder).sort((a,b)=>b.created-a.created);
+  if(!folderDocs.length){list.innerHTML='<div class="empty"><strong>Esta pasta ainda não tem PDFs</strong>Seleciona ficheiros acima para os adicionar.</div>';return}
+  folderDocs.forEach(pdf=>{
    const row=document.createElement('article');row.className='task record';
    const title=document.createElement('div');title.className='tasktitle';title.textContent=pdf.name;
    const meta=document.createElement('div');meta.className='sub';meta.style.marginTop='5px';meta.textContent=formatSize(pdf.size)+' · Importado em '+new Date(pdf.created).toLocaleDateString('pt-PT');
    const actions=document.createElement('div');actions.className='taskactions';
    actions.append(button('⬇ Descarregar PDF',()=>downloadPdf(pdf)),button('✉ Enviar por e-mail',()=>sharePdf(pdf,true)),button('↗ Partilhar PDF',()=>sharePdf(pdf,false)),button('Eliminar',async()=>{if(confirm('Eliminar "'+pdf.name+'" desta lista?')){await deletePdf(pdf.id);await render()}}));
-   row.append(title,meta,actions);list.append(row);
+   row.append(title,meta,folderSelect(pdf),actions);list.append(row);
   });
  }
+ tabs.forEach(tab=>tab.addEventListener('click',()=>{currentFolder=tab.dataset.manualFolder;status.textContent='';render()}));
  input.addEventListener('change',async()=>{
-  const files=Array.from(input.files||[]);input.value='';
-  if(!files.length)return;
-  try{
-   status.textContent='A importar PDFs…';
-   for(const file of files){
-    if(!(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf'))){continue}
-    await addPdf({name:file.name,size:file.size,created:Date.now(),blob:file});
-   }
-   await render();status.textContent='Importação concluída.';
+  const files=Array.from(input.files||[]);input.value='';if(!files.length)return;
+  try{status.textContent='A importar PDFs para '+currentFolder+'…';let count=0;
+   for(const file of files){if(!(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')))continue;await addPdf({name:file.name,size:file.size,created:Date.now(),blob:file,folder:currentFolder});count++}
+   await render();status.textContent=count?count+' PDF(s) importado(s) para a pasta '+currentFolder+'.':'Não foram selecionados ficheiros PDF válidos.';
   }catch(e){status.textContent='Não foi possível guardar os PDFs. Confirma o espaço disponível e tenta novamente.';console.error(e)}
  });
- openDb().then(render).catch(e=>{status.textContent='O armazenamento de documentos não está disponível neste navegador.';console.error(e)});
+ openDb().then(async()=>{const docs=await allPdfs();let migrated=false;for(const pdf of docs){if(!pdf.folder){pdf.folder='Geral';await updatePdf(pdf);migrated=true}}await render()}).catch(e=>{status.textContent='O armazenamento de documentos não está disponível neste navegador.';console.error(e)});
 })();
 </script>
 
+<script>
+// Navegação da janela Manuais/Documentos
+(()=>{
+ const nav=document.getElementById('manualsNav');
+ const overlay=document.getElementById('manualsOverlay');
+ const close=document.getElementById('closeManuals');
+ if(!nav||!overlay||!close)return;
+ const open=()=>{overlay.classList.remove('hidden');document.body.style.overflow='hidden';};
+ const shut=()=>{overlay.classList.add('hidden');document.body.style.overflow='';};
+ nav.addEventListener('click',open);
+ close.addEventListener('click',shut);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)shut();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.classList.contains('hidden'))shut();});
+})();
+</script>
 </body></html>
