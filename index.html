@@ -19,6 +19,8 @@ h1{font-size:27px;line-height:1.1;margin:7px 0 5px}header p{margin:0;color:#dbe9
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:20px}.stat{min-width:0;background:#ffffff17;border:1px solid #ffffff20;border-radius:14px;padding:11px 10px}.stat strong{display:block;font-size:21px}.stat span{font-size:10px;color:#e1eee7}
 main{max-width:760px;margin:0 auto;padding:16px 14px}
 .toolbar{display:flex;gap:8px;overflow:auto;padding:2px 0 12px}.filter{border:1px solid var(--line);background:white;border-radius:999px;padding:10px 14px;white-space:nowrap;font-weight:650;color:#42514a;font-size:13px}.filter.active{background:var(--green);color:white;border-color:var(--green)}
+/* Pastas Manuais/Documentos: alvos de toque robustos em telemóveis */
+#manualFolderTabs{display:flex;flex-wrap:wrap;gap:8px;overflow:visible;position:relative;z-index:2;touch-action:manipulation}#manualFolderTabs button{flex:1 1 30%;min-width:100px;min-height:46px;white-space:normal;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;pointer-events:auto}#manualFolderTabs button.active{background:var(--green);color:#fff;border-color:var(--green)}@media(max-width:600px){#manualsOverlay{padding:6px}#manualsOverlay .calendar-dialog{padding:12px;width:100%;margin:4px 0 16px}#manualFolderTabs button{flex:1 1 100%;width:100%;text-align:left;border-radius:10px;padding:13px 14px}}
 .panel{background:white;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px #153c3010}
 .panelhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}h2{font-size:17px;margin:0}.sub{color:var(--muted);font-size:12px}
 label{display:block;font-size:12px;color:#516058;font-weight:700;margin:11px 0 6px}
@@ -388,12 +390,15 @@ function queueCloudSave(){
   if(!cloudUser||!cloudReady)return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>{
-    const snapshot=JSON.parse(JSON.stringify(currentBackup()));
     cloudWriteChain=cloudWriteChain.then(async()=>{
+      const snapshot=JSON.parse(JSON.stringify(currentBackup()));
+      if(window.restradasManualLibrary){
+        snapshot.manualPdfs=await window.restradasManualLibrary.exportAll();
+      }
       const {error}=await supabaseClient.from("tarefas_restradas_dados").upsert({user_id:cloudUser.id,dados:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});
       if(error)throw error;
       cloudStatus("Sincronizado com a nuvem · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
-    }).catch(err=>{console.error("Erro de sincronização:",err);cloudStatus("Erro ao sincronizar. Verifica a ligação e tenta novamente.");});
+    }).catch(err=>{console.error("Erro de sincronização:",err);cloudStatus("Erro ao sincronizar. Verifica a ligação e o espaço disponível na nuvem.");});
   },500);
 }
 async function connectCloudSession(user){
@@ -403,22 +408,45 @@ async function connectCloudSession(user){
   cloudStatus("A carregar os dados da nuvem…");
   const {data,error}=await supabaseClient.from("tarefas_restradas_dados").select("dados").eq("user_id",user.id).maybeSingle();
   if(error){cloudStatus("Não foi possível ler os dados: "+error.message);return;}
-  const localHasData=tasks.length>0||maintenanceRecords.length>0||calibrationRecords.length>0||breakdownRecords.length>0;
-  if(data&&data.dados&&typeof data.dados==="object"){
-    applyBackup(data.dados);
+  let localPdfs=[];
+  try{if(window.restradasManualLibrary)localPdfs=await window.restradasManualLibrary.exportAll()}catch(e){console.warn("Não foi possível ler os PDFs locais",e)}
+  const cloudData=data&&data.dados&&typeof data.dados==="object"?data.dados:null;
+  let cloudPdfs=cloudData&&Array.isArray(cloudData.manualPdfs)?cloudData.manualPdfs:[];
+  // Combina os PDFs locais e os da nuvem sem apagar documentos existentes.
+  const merged=new Map();
+  for(const pdf of [...cloudPdfs,...localPdfs]){
+    const key=pdf.syncId||[pdf.folder||"Geral",pdf.name||"",pdf.size||0,pdf.created||0].join("|");
+    if(!merged.has(key))merged.set(key,pdf);
+  }
+  const mergedPdfs=[...merged.values()];
+  if(cloudData){
+    applyBackup(cloudData);
     cloudReady=true;
-    cloudStatus("Ligado e sincronizado. Podes usar o PC e o iPhone.");
+    try{if(window.restradasManualLibrary)await window.restradasManualLibrary.importAll(mergedPdfs)}catch(e){console.error("Erro ao restaurar PDFs da nuvem",e);cloudStatus("Dados ligados, mas alguns PDFs não foram restaurados neste dispositivo.");}
+    if(mergedPdfs.length>cloudPdfs.length || !Array.isArray(cloudData.manualPdfs)){
+      queueCloudSave();
+      cloudStatus("A sincronizar documentos PDF entre dispositivos…");
+    }else{
+      cloudStatus("Ligado e sincronizado. Podes usar o PC e o iPhone.");
+    }
   }else{
     cloudReady=true;
-    if(localHasData){
-      if(confirm("Ainda não existem dados na nuvem. Queres copiar para o Supabase os dados que estão guardados neste dispositivo?")){
-        queueCloudSave();cloudStatus("A enviar os dados deste dispositivo para a nuvem…");
-      }else{
-        applyBackup({tasks:[],maintenanceRecords:[],calibrationRecords:[],breakdownRecords:[]});
-        cloudStatus("Ligado. A nuvem está vazia; não foram enviados dados locais.");
-      }
+    if(localPdfs.length){
+      try{await window.restradasManualLibrary.importAll(localPdfs)}catch(e){}
+      queueCloudSave();
+      cloudStatus("A enviar os PDFs deste dispositivo para a nuvem…");
     }else{
-      queueCloudSave();cloudStatus("Ligado. A tua conta está pronta para sincronizar.");
+      const localHasData=tasks.length>0||maintenanceRecords.length>0||calibrationRecords.length>0||breakdownRecords.length>0;
+      if(localHasData){
+        if(confirm("Ainda não existem dados na nuvem. Queres copiar para o Supabase os dados que estão guardados neste dispositivo?")){
+          queueCloudSave();cloudStatus("A enviar os dados deste dispositivo para a nuvem…");
+        }else{
+          applyBackup({tasks:[],maintenanceRecords:[],calibrationRecords:[],breakdownRecords:[],calendarEvents:[]});
+          cloudStatus("Ligado. A nuvem está vazia; não foram enviados dados locais.");
+        }
+      }else{
+        queueCloudSave();cloudStatus("Ligado. A tua conta está pronta para sincronizar.");
+      }
     }
   }
 }
@@ -1546,6 +1574,12 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
  function addPdf(record){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).add(record);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
  function updatePdf(pdf){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(pdf);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
  function deletePdf(id){return new Promise((resolve,reject)=>{const r=db.transaction(STORE,'readwrite').objectStore(STORE).delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
+ function toDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob)})}
+ function fromDataUrl(dataUrl){const parts=String(dataUrl||'').split(',');const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'application/pdf';const raw=atob(parts[1]||'');const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:mime})}
+ async function exportAll(){const docs=await allPdfs();const out=[];for(const pdf of docs){if(!pdf.blob)continue;out.push({syncId:pdf.syncId||('pdf-'+pdf.created+'-'+pdf.name+'-'+pdf.size),name:pdf.name,size:pdf.size,created:pdf.created,folder:pdf.folder||'Geral',dataUrl:await toDataUrl(pdf.blob)})}return out}
+ async function importAll(items){if(!Array.isArray(items))return;const docs=await allPdfs();const signatures=new Set(docs.map(p=>p.syncId||[p.folder||'Geral',p.name||'',p.size||0,p.created||0].join('|')));for(const item of items){if(!item||!item.dataUrl)continue;const sig=item.syncId||[item.folder||'Geral',item.name||'',item.size||0,item.created||0].join('|');if(signatures.has(sig))continue;await addPdf({name:item.name||'Documento.pdf',size:Number(item.size)||0,created:Number(item.created)||Date.now(),folder:['Betão','Pedreira','Geral'].includes(item.folder)?item.folder:'Geral',blob:fromDataUrl(item.dataUrl),syncId:sig});signatures.add(sig)}await render()}
+ window.restradasManualLibrary={exportAll,importAll};
+ document.addEventListener('restradas:manuals-changed',()=>{if(typeof queueCloudSave==='function')queueCloudSave()});
  function formatSize(n){return n<1024*1024?Math.max(1,Math.round(n/1024))+' KB':(n/1024/1024).toFixed(1)+' MB'}
  function downloadPdf(pdf){const url=URL.createObjectURL(pdf.blob);const a=document.createElement('a');a.href=url;a.download=pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
  async function sharePdf(pdf,preferEmail){
@@ -1558,7 +1592,7 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
   else status.textContent='A partilha direta não está disponível neste navegador. O PDF foi descarregado para poderes anexá-lo manualmente.';
  }
  function button(label,fn){const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;b.addEventListener('click',fn);return b}
- function folderSelect(pdf){const select=document.createElement('select');select.setAttribute('aria-label','Mover PDF para outra pasta');select.style.cssText='padding:7px;border:1px solid var(--line);border-radius:8px;max-width:100%';['Betão','Pedreira','Geral'].forEach(folder=>{const opt=document.createElement('option');opt.value=folder;opt.textContent='Mover para: '+folder;if((pdf.folder||'Geral')===folder)opt.selected=true;select.append(opt)});select.addEventListener('change',async()=>{pdf.folder=select.value;await updatePdf(pdf);await render()});return select}
+ function folderSelect(pdf){const select=document.createElement('select');select.setAttribute('aria-label','Mover PDF para outra pasta');select.style.cssText='padding:7px;border:1px solid var(--line);border-radius:8px;max-width:100%';['Betão','Pedreira','Geral'].forEach(folder=>{const opt=document.createElement('option');opt.value=folder;opt.textContent='Mover para: '+folder;if((pdf.folder||'Geral')===folder)opt.selected=true;select.append(opt)});select.addEventListener('change',async()=>{pdf.folder=select.value;await updatePdf(pdf);await render();document.dispatchEvent(new Event('restradas:manuals-changed'))});return select}
  async function render(){
   const docs=await allPdfs();
   tabs.forEach(t=>t.classList.toggle('active',t.dataset.manualFolder===currentFolder));
@@ -1572,16 +1606,19 @@ loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();r
    const title=document.createElement('div');title.className='tasktitle';title.textContent=pdf.name;
    const meta=document.createElement('div');meta.className='sub';meta.style.marginTop='5px';meta.textContent=formatSize(pdf.size)+' · Importado em '+new Date(pdf.created).toLocaleDateString('pt-PT');
    const actions=document.createElement('div');actions.className='taskactions';
-   actions.append(button('⬇ Descarregar PDF',()=>downloadPdf(pdf)),button('✉ Enviar por e-mail',()=>sharePdf(pdf,true)),button('↗ Partilhar PDF',()=>sharePdf(pdf,false)),button('Eliminar',async()=>{if(confirm('Eliminar "'+pdf.name+'" desta lista?')){await deletePdf(pdf.id);await render()}}));
+   actions.append(button('⬇ Descarregar PDF',()=>downloadPdf(pdf)),button('✉ Enviar por e-mail',()=>sharePdf(pdf,true)),button('↗ Partilhar PDF',()=>sharePdf(pdf,false)),button('Eliminar',async()=>{if(confirm('Eliminar "'+pdf.name+'" desta lista?')){await deletePdf(pdf.id);await render();document.dispatchEvent(new Event('restradas:manuals-changed'))}}));
    row.append(title,meta,folderSelect(pdf),actions);list.append(row);
   });
  }
- tabs.forEach(tab=>tab.addEventListener('click',()=>{currentFolder=tab.dataset.manualFolder;status.textContent='';render()}));
+ const chooseFolder=(event)=>{const tab=event.target.closest('[data-manual-folder]');if(!tab||!document.getElementById('manualFolderTabs').contains(tab))return;event.preventDefault();event.stopPropagation();currentFolder=tab.dataset.manualFolder;status.textContent='';tabs.forEach(t=>{t.classList.toggle('active',t===tab);t.setAttribute('aria-pressed',t===tab?'true':'false')});render()};
+ const folderTabs=document.getElementById('manualFolderTabs');
+ folderTabs.addEventListener('click',chooseFolder);
+ tabs.forEach(t=>{t.setAttribute('aria-pressed',t.classList.contains('active')?'true':'false');t.addEventListener('touchend',e=>{if(e.changedTouches&&e.changedTouches.length){chooseFolder(e)}},{passive:false})});
  input.addEventListener('change',async()=>{
   const files=Array.from(input.files||[]);input.value='';if(!files.length)return;
   try{status.textContent='A importar PDFs para '+currentFolder+'…';let count=0;
-   for(const file of files){if(!(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')))continue;await addPdf({name:file.name,size:file.size,created:Date.now(),blob:file,folder:currentFolder});count++}
-   await render();status.textContent=count?count+' PDF(s) importado(s) para a pasta '+currentFolder+'.':'Não foram selecionados ficheiros PDF válidos.';
+   for(const file of files){if(!(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')))continue;await addPdf({name:file.name,size:file.size,created:Date.now(),blob:file,folder:currentFolder,syncId:'pdf-'+Date.now()+'-'+Math.random().toString(36).slice(2)});count++}
+   await render();status.textContent=count?count+' PDF(s) importado(s) para a pasta '+currentFolder+'.':'Não foram selecionados ficheiros PDF válidos.';if(count)document.dispatchEvent(new Event('restradas:manuals-changed'));
   }catch(e){status.textContent='Não foi possível guardar os PDFs. Confirma o espaço disponível e tenta novamente.';console.error(e)}
  });
  openDb().then(async()=>{const docs=await allPdfs();let migrated=false;for(const pdf of docs){if(!pdf.folder){pdf.folder='Geral';await updatePdf(pdf);migrated=true}}await render()}).catch(e=>{status.textContent='O armazenamento de documentos não está disponível neste navegador.';console.error(e)});
