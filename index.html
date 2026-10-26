@@ -712,7 +712,7 @@ function recordReminderItems(){
   const today=localToday(), items=[];
   maintenanceRecords.forEach(r=>{
     const days=Number(r.reminder||0), due=(r.status==='Realizada'?r.next:r.date);
-    if(days&&due&&((r.status==='Realizada')||r.status!=='Realizada')){
+    if(days&&due){
       const start=new Date(new Date(due+'T12:00:00').getTime()-days*86400000);
       const startDate=start.getFullYear()+'-'+String(start.getMonth()+1).padStart(2,'0')+'-'+String(start.getDate()).padStart(2,'0');
       if(today>=startDate&&today<=due)items.push({key:'m-'+r.id,title:r.title,due,kind:'Manutenção',days});
@@ -830,10 +830,10 @@ function renderRecords(kind){
     const del=document.createElement('button');del.className='iconbtn';del.textContent='×';del.title='Apagar registo';del.onclick=()=>{if(confirm('Queres apagar este registo?')){const arr=isM?maintenanceRecords:calibrationRecords;const idx=arr.findIndex(x=>x.id===r.id);if(idx>=0)arr.splice(idx,1);saveRecords(kind)}};
     top.append(title,del);content.append(top);
     const chips=document.createElement('div');chips.className='chips';
-    const reminderDate=isM?r.date:r.next;const reminderMonths=Number(r.reminder||0);const reminderText=reminderMonths&&reminderDate&&r.status!=='Realizada'&&r.status!=='Não aplicável'?`Aviso ${reminderMonths} mês(es) antes` : '';
+    const reminderDate=isM?(r.status==='Realizada'?r.next:r.date):r.next;const reminderValue=Number(r.reminder||0);const reminderText=reminderValue&&reminderDate&&r.status!=='Não aplicável'?`Aviso ${isM?reminderValue+' dias':reminderValue+' mês(es)'} antes` : '';
     const maintenanceDateLabel=r.status==='Realizada'?'Realizada · ':'Previsão · ';
-    const values=[r.area,r.equipment,r.status,r.date?(isM?maintenanceDateLabel:'Data · ')+dateLabel(r.date):'',!isM&&r.next?'Próxima · '+dateLabel(r.next):'',reminderText,r.owner?'Responsável · '+r.owner:''].filter(Boolean);
-    values.forEach((v)=>{const chip=document.createElement('span');chip.className='chip'+(/Não conforme|Adiada/.test(v)?' high':'');if(v===r.area){chip.classList.add(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro')}if((isM&&r.status!=='Realizada'&&v==='Previsão · '+dateLabel(r.date))||(!isM&&r.status!=='Não aplicável'&&v==='Próxima · '+dateLabel(r.next))){const today=localToday(),days=Math.ceil((new Date(reminderDate+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);chip.classList.add(days<0?'next-overdue':days<=30?'next-soon':'next-date')}chip.textContent=v;chips.append(chip)});
+    const values=[r.area,r.equipment,r.status,r.date?(isM?maintenanceDateLabel:'Data · ')+dateLabel(r.date):'',r.next?(isM?'Próxima manutenção · ':'Próxima · ')+dateLabel(r.next):'',reminderText,r.owner?'Responsável · '+r.owner:''].filter(Boolean);
+    values.forEach((v)=>{const chip=document.createElement('span');chip.className='chip'+(/Não conforme|Adiada/.test(v)?' high':'');if(v===r.area){chip.classList.add(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro')}if((isM&&r.status!=='Realizada'&&v==='Previsão · '+dateLabel(r.date))||(r.next&&v===(isM?'Próxima manutenção · ':'Próxima · ')+dateLabel(r.next))){const today=localToday(),days=Math.ceil((new Date(reminderDate+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);chip.classList.add(days<0?'next-overdue':days<=30?'next-soon':'next-date')}chip.textContent=v;chips.append(chip)});
     content.append(chips);
     if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
     appendRecordPhotos(content,r.photos,isM?'Fotografia da manutenção':'Fotografia da calibração/ensaio');
