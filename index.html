@@ -829,27 +829,32 @@ function showRecordPanel(kind){
 }
 function safeText(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function sendCalibrationReminder(record,channel){
-  const date=record.next?dateLabel(record.next):'sem data definida';
+  const date=record.next?dateLabel(record.next):'Sem data definida';
   const subject='Aviso de calibração/ensaio — '+(record.title||'Registo');
+  const lines=[
+    ['Assunto',record.title||'Calibração/ensaio'],
+    ['Equipamento / elemento',record.equipment||'Não indicado'],
+    ['Área',record.area||'Geral'],
+    ['Próxima data prevista',date],
+    ['Estado',record.status||'Não indicado'],
+    ['Observações',record.notes||'Sem observações']
+  ];
   const body=[
     'Bom dia,',
     '',
     'Venho recordar o registo de calibração/ensaio da Restradas.',
-    'Assunto: '+(record.title||'Calibração/ensaio'),
-    record.equipment?'Equipamento/elemento: '+record.equipment:'',
-    'Área: '+(record.area||'Geral'),
-    'Próxima data prevista: '+date,
-    record.status?'Estado: '+record.status:'',
-    record.notes?'Observações: '+record.notes:'',
+    '',
+    ...lines.map(([label,value])=>channel==='whatsapp'?'*'+label+':* '+value:label.toUpperCase()+': '+value),
     '',
     'Agradeço confirmação e, se aplicável, o agendamento da intervenção.',
+    '',
     'Obrigado.'
-  ].filter(Boolean).join('\\n');
+  ].join('\\n');
   if(channel==='whatsapp'){
-    // Abre a aplicação WhatsApp com o texto preenchido, sem definir destinatário.
     window.location.href='https://api.whatsapp.com/send?text='+encodeURIComponent(body);
   }else{
-    // mailto abre o cliente de email predefinido (ex.: Outlook) com assunto e corpo, sem destinatário.
+    // mailto suporta texto simples: os campos são separados por linhas e destacados com maiúsculas.
+    // Negrito real não é suportado de forma fiável por mailto em clientes como Outlook.
     window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   }
 }
