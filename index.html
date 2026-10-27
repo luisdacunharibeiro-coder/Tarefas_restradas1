@@ -1199,6 +1199,9 @@ function renderConcrete(){
  const ref=($('concreteReferenceFilter')?.value||'').trim().toLocaleLowerCase('pt-PT');
  const hasSelection=concreteSelectedCodes.size>0;
  const rows=concreteCompositions.filter(c=>(!concreteSelectedOnly||(hasSelection&&concreteSelectedCodes.has(String(c.code))))&&(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
+ // Ordenar sempre pelo código da composição, em ordem natural (BET.1717 antes de BET.1721),
+ // independentemente da ordem em que as composições foram importadas ou acrescentadas.
+ rows.sort((a,b)=>String(a.code||'').localeCompare(String(b.code||''),'pt-PT',{numeric:true,sensitivity:'base'}));
  $('concreteCount').textContent=`${concreteCompositions.length} composições · folha mais recente do Excel`;
  const status=$('concreteSelectionStatus');if(status)status.textContent=concreteSelectedOnly?(hasSelection?`Modo seleção ativo: a mostrar ${rows.length} betão(ões) assinalados que correspondem aos filtros.`:'Modo seleção ativo, mas não há betões assinalados; usa “Mostrar lista completa” ou assinala betões primeiro.'):(hasSelection?`${concreteSelectedCodes.size} betão(ões) assinalados. A lista completa mantém-se visível até ativares o filtro.`:'Modo lista completa: assinala os betões que queres e depois aplica o filtro.');
  const toggleButton=$('concreteToggleSelectedView');if(toggleButton){toggleButton.textContent=concreteSelectedOnly?'Mostrar lista completa':'Mostrar apenas os betões com visto';toggleButton.disabled=!concreteSelectedOnly&&!hasSelection;}
