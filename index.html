@@ -839,24 +839,34 @@ function sendCalibrationReminder(record,channel){
     ['Estado',record.status||'Não indicado'],
     ['Observações',record.notes||'Sem observações']
   ];
-  const body=[
-    'Bom dia,',
+  const plainBody=[
+    'Bom dia,','',
+    'Venho recordar o registo de calibração/ensaio da Restradas.','',
+    ...lines.map(([label,value])=>label.toUpperCase()+': '+value),
     '',
-    'Venho recordar o registo de calibração/ensaio da Restradas.',
-    '',
-    ...lines.map(([label,value])=>channel==='whatsapp'?'*'+label+':* '+value:label.toUpperCase()+': '+value),
-    '',
-    'Agradeço confirmação e, se aplicável, o agendamento da intervenção.',
-    '',
+    'Agradeço confirmação e, se aplicável, o agendamento da intervenção.','',
     'Obrigado.'
-  ].join('\n');
+  ].join('\r\n');
   if(channel==='whatsapp'){
-    window.location.href='https://api.whatsapp.com/send?text='+encodeURIComponent(body);
-  }else{
-    // mailto suporta texto simples: os campos são separados por linhas e destacados com maiúsculas.
-    // Negrito real não é suportado de forma fiável por mailto em clientes como Outlook.
-    window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    const whatsappBody=['Bom dia,','','Venho recordar o registo de calibração/ensaio da Restradas.','',...lines.map(([label,value])=>'*'+label+':* '+value),'','Agradeço confirmação e, se aplicável, o agendamento da intervenção.','','Obrigado.'].join('\n');
+    window.location.href='https://api.whatsapp.com/send?text='+encodeURIComponent(whatsappBody);
+    return;
   }
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile){
+    window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(plainBody);
+    return;
+  }
+  // No PC, mailto não permite impor HTML/negrito no corpo. Geramos um rascunho .eml HTML que o Outlook pode abrir com a formatação.
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const rows=lines.map(([label,value])=>'<tr><td style="padding:5px 12px 5px 0;vertical-align:top;font-weight:700;white-space:nowrap">'+esc(label)+':</td><td style="padding:5px 0;vertical-align:top;font-weight:400">'+esc(value)+'</td></tr>').join('');
+  const htmlBody='<html><body style="font-family:Arial,sans-serif;font-size:11pt;color:#222"><p>Bom dia,</p><p>Venho recordar o registo de calibração/ensaio da Restradas.</p><table style="border-collapse:collapse">'+rows+'</table><p>Agradeço confirmação e, se aplicável, o agendamento da intervenção.</p><p>Obrigado.</p></body></html>';
+  const eml='MIME-Version: 1.0\r\nTo: \r\nSubject: '+subject+'\r\nContent-Type: text/html; charset="UTF-8"\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
+  const blob=new Blob(['\uFEFF'+eml],{type:'message/rfc822;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='Aviso_calibracao_ensaio.eml';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  alert('Foi criado um rascunho de email formatado. Abre o ficheiro Aviso_calibracao_ensaio.eml descarregado com o Outlook; os campos estarão em lista e com os nomes a negrito. Depois escolhe o destinatário.');
 }
 function renderRecords(kind){
   const isM=kind==='maintenance'; let records=isM?maintenanceRecords:calibrationRecords;
