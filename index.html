@@ -159,8 +159,6 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
         <div><label for="calibrationReminder">Avisar antes da data</label><select id="calibrationReminder"><option value="0">Sem aviso</option><option value="1">1 mês antes</option><option value="2">2 meses antes</option></select></div>
         <div><label for="calibrationStatus">Resultado / estado</label><select id="calibrationStatus"><option>Conforme</option><option>Não conforme</option><option>Pendente</option><option>Agendado</option><option>Não aplicável</option></select></div>
         <div><label for="calibrationOwner">Responsável / entidade</label><input id="calibrationOwner" maxlength="100" placeholder="Laboratório ou responsável"></div>
-        <div><label for="calibrationPhone">Telemóvel / WhatsApp do responsável</label><input id="calibrationPhone" type="tel" maxlength="30" placeholder="Ex.: 351912345678"></div>
-        <div><label for="calibrationEmail">Email do responsável</label><input id="calibrationEmail" type="email" maxlength="150" placeholder="responsavel@empresa.pt"></div>
         <div class="full"><label for="calibrationNotes">Observações / referência do relatório</label><textarea id="calibrationNotes" maxlength="1000" placeholder="N.º certificado, resultados, ações necessárias..."></textarea></div>
       <div class="full"><label for="calibrationPhotos">Anexos / comprovativos (máximo 4 imagens/PDFs)</label><input id="calibrationPhotos" type="file" accept="image/*,.pdf,application/pdf" multiple><div class="sub">Escolhe imagens da biblioteca ou tira fotografias do equipamento, certificado ou ensaio.</div><div id="calibrationPhotoPreview" class="photo-preview"></div></div>
       </div>
@@ -834,7 +832,7 @@ function sendCalibrationReminder(record,channel){
   const date=record.next?dateLabel(record.next):'sem data definida';
   const subject='Aviso de calibração/ensaio — '+(record.title||'Registo');
   const body=[
-    'Bom dia '+(record.owner||'')+',',
+    'Bom dia,',
     '',
     'Venho recordar o registo de calibração/ensaio da Restradas.',
     'Assunto: '+(record.title||'Calibração/ensaio'),
@@ -846,18 +844,13 @@ function sendCalibrationReminder(record,channel){
     '',
     'Agradeço confirmação e, se aplicável, o agendamento da intervenção.',
     'Obrigado.'
-  ].filter(Boolean).join('\n');
+  ].filter(Boolean).join('\\n');
   if(channel==='whatsapp'){
-    let phone=String(record.phone||'').replace(/\D/g,'');
-    if(!phone)phone=prompt('Introduz o número de WhatsApp do responsável, incluindo indicativo do país (ex.: 351912345678):')||'';
-    phone=phone.replace(/\D/g,'');
-    if(!phone){alert('É necessário indicar um número de WhatsApp. Podes guardá-lo no registo para as próximas vezes.');return}
-    window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(body),'_blank','noopener,noreferrer');
+    // Abre a seleção de destinatário do WhatsApp sem exigir contacto guardado no registo.
+    window.open('https://wa.me/?text='+encodeURIComponent(body),'_blank','noopener,noreferrer');
   }else{
-    let email=String(record.email||'').trim();
-    if(!email)email=prompt('Introduz o email do responsável:')||'';
-    if(!email){alert('É necessário indicar um email. Podes guardá-lo no registo para as próximas vezes.');return}
-    window.location.href='mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    // Abre o cliente de email sem destinatário; o utilizador escolhe-o na sua lista.
+    window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   }
 }
 function renderRecords(kind){
@@ -914,7 +907,7 @@ function renderRecords(kind){
 }
 function fillRecordForm(kind,r){
   const isM=kind==='maintenance', prefix=isM?'maintenance':'calibration';
-  const fields=isM?['title','area','equipment','date','next','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','phone','email','notes'];
+  const fields=isM?['title','area','equipment','date','next','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];
   $(prefix+'Id').value=r.id;
   fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));if(el)el.value=(r[f]!==undefined&&r[f]!==null)?String(r[f]):(f==='reminder'?'0':'')});
   setRecordPhotos(prefix,r.photos||[]);
@@ -948,7 +941,7 @@ function updateMaintenanceDateLabel(){
 $('maintenanceStatus')?.addEventListener('change',updateMaintenanceDateLabel);
 function setupRecordForm(kind){
   const isM=kind==='maintenance', prefix=isM?'maintenance':'calibration';
-  const fields=isM?['title','area','equipment','date','next','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','phone','email','notes'];
+  const fields=isM?['title','area','equipment','date','next','reminder','status','owner','notes']:['title','area','equipment','date','next','reminder','status','owner','notes'];
   $(prefix+'Form').addEventListener('submit',e=>{
     e.preventDefault();
     const arr=isM?maintenanceRecords:calibrationRecords;
