@@ -237,7 +237,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
 
   <section class="panel" id="concreteNavPanel" style="margin-top:14px">
     <div class="panelhead"><div><h2>🧱 Análise de Composições de Betão</h2><div class="sub">Custos de produção, preços de venda, simulador e propostas comerciais</div></div><button class="secondary" id="concreteOpen">Abrir módulo</button></div>
-    <div class="sub">Módulo independente dos registos operacionais. As composições iniciais são da folha 02.10.2026.</div>
+    <div class="sub">Módulo independente dos registos operacionais. A lista de composições é atualizada a partir da folha com a data mais recente do Excel importado.</div>
   </section>
   <style>
   #concreteTabs{gap:8px;padding:10px;margin:10px 0 16px;border-radius:12px;background:#edf2ef;border:1px solid #d5e0da}
@@ -270,7 +270,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
         <div><label for="concreteImportFile">Importar Excel de composições</label><input id="concreteImportFile" type="file" accept=".xlsx,.xls"></div>
         <div class="full"><label for="concreteExportCommercial"><input id="concreteExportCommercial" type="checkbox" style="width:auto;margin-right:8px;vertical-align:middle">Mostrar colunas de análise: margem, transporte, custo de produção e custo final</label><button type="button" class="secondary" id="concreteExportExcel" style="width:100%;margin-top:8px">Exportar Excel no layout original</button><div class="sub" style="margin-top:5px">Com o visto, acrescenta margem, transporte, custo de produção e custo final. Sem o visto, oculta essas quatro colunas e mantém apenas a designação/código e as dosagens, no layout do Excel original.</div></div>
       </div>
-      <div class="sub" style="margin:8px 0">A importação utiliza exclusivamente a folha <strong>02.10.2026</strong>. Os preços e os custos operacionais podem ser editados no separador “Preços dos materiais”.</div>
+      <div class="sub" style="margin:8px 0">A importação utiliza automaticamente a folha com a data mais recente no Excel. Os preços e os custos operacionais podem ser editados no separador “Preços dos materiais”.</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0"><div id="concreteSelectionStatus" class="sub">Modo lista completa: assinala os betões que queres e depois clica em “Mostrar apenas os betões com visto”.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="concreteAddNewComposition">+ Adicionar composição nova</button><button type="button" class="secondary" id="concreteToggleSelectedView">Mostrar apenas os betões com visto</button><button type="button" class="secondary" id="concreteClearSelection">Limpar todos os vistos</button></div></div>
       <div id="concreteSummary" class="breakdown-summary"></div>
       <div id="concreteCompositionScroller" class="concrete-composition-scroller" style="max-height:650px;border:1px solid var(--line);border-radius:12px">
@@ -1196,7 +1196,7 @@ function renderConcrete(){
  const ref=($('concreteReferenceFilter')?.value||'').trim().toLocaleLowerCase('pt-PT');
  const hasSelection=concreteSelectedCodes.size>0;
  const rows=concreteCompositions.filter(c=>(!concreteSelectedOnly||(hasSelection&&concreteSelectedCodes.has(String(c.code))))&&(!ref||String(c.code||'').toLocaleLowerCase('pt-PT').includes(ref))&&(!q||String(c.name||'').toLocaleLowerCase('pt-PT').includes(q)));
- $('concreteCount').textContent=`${concreteCompositions.length} composições · folha base 02.10.2026`;
+ $('concreteCount').textContent=`${concreteCompositions.length} composições · folha mais recente do Excel`;
  const status=$('concreteSelectionStatus');if(status)status.textContent=concreteSelectedOnly?(hasSelection?`Modo seleção ativo: a mostrar ${rows.length} betão(ões) assinalados que correspondem aos filtros.`:'Modo seleção ativo, mas não há betões assinalados; usa “Mostrar lista completa” ou assinala betões primeiro.'):(hasSelection?`${concreteSelectedCodes.size} betão(ões) assinalados. A lista completa mantém-se visível até ativares o filtro.`:'Modo lista completa: assinala os betões que queres e depois aplica o filtro.');
  const toggleButton=$('concreteToggleSelectedView');if(toggleButton){toggleButton.textContent=concreteSelectedOnly?'Mostrar lista completa':'Mostrar apenas os betões com visto';toggleButton.disabled=!concreteSelectedOnly&&!hasSelection;}
  const clearButton=$('concreteClearSelection');if(clearButton)clearButton.disabled=!hasSelection;
@@ -1545,9 +1545,9 @@ function exportConcreteExcel(){
   const binary=atob(CONCRETE_EXCEL_TEMPLATE_B64),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   const wb=XLSX.read(bytes,{type:'array',cellStyles:true,cellNF:true});
-  const sheetName='02.10.2026';
-  if(!wb.Sheets[sheetName])throw new Error('A folha modelo 02.10.2026 não foi encontrada.');
-  // Exportar exclusivamente a folha atual, mantendo o layout e a formatação do Excel original.
+  const sheetName=getLatestDatedSheetName(wb.SheetNames);
+  if(!sheetName || !wb.Sheets[sheetName])throw new Error('Não foi encontrada uma folha com data válida no Excel modelo.');
+  // Exportar exclusivamente a folha com a data mais recente, mantendo o layout e a formatação do Excel original.
   wb.SheetNames=[sheetName];
   const ws=wb.Sheets[sheetName];
   const cloneStyleCell=(from,to)=>{if(ws[from]){ws[to]={...ws[from]};if(ws[from].s)ws[to].s=JSON.parse(JSON.stringify(ws[from].s));delete ws[to].v;delete ws[to].w;}};
@@ -1568,7 +1568,7 @@ function exportConcreteExcel(){
    baseKeys.forEach((key,j)=>put(colName(j+1)+r,comp[key]??(j<2?'':0),colName(j+1)+Math.min(r,243)));
   });
   // Atualizar o título com a data base da folha enviada e manter a nota de cálculo original.
-  put('A2','Composições de betão 02/10/2026','A2');
+  put('A2','Composições de betão — folha mais recente','A2');
   // Opcionalmente, acrescentar as quatro colunas comerciais à direita da composição.
   const commercialHeaders=['Margem (%)','Transporte (€/m³)','Custo de produção (€/m³)','Custo final (€/m³)'];
   const commercialCols=['R','S','T','U'];
@@ -1596,13 +1596,28 @@ function exportConcreteExcel(){
  }catch(err){console.error(err);alert('Não foi possível exportar o Excel. '+(err.message||'Tenta novamente.'));}
 }
 
+// Escolhe a folha cuja designação contém a data mais recente (ex.: 27.10.2026).
+// Se nenhuma folha tiver uma data reconhecível, usa a última folha do livro.
+function getLatestDatedSheetName(sheetNames){
+ const parseSheetDate=name=>{
+  const s=String(name||'').trim();
+  let m=s.match(/(^|\D)(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})(\D|$)/);
+  if(m){const d=Number(m[2]),mo=Number(m[3]),y=Number(m[4]);const dt=new Date(y,mo-1,d);if(dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d)return dt.getTime();}
+  m=s.match(/(^|\D)(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})(\D|$)/);
+  if(m){const y=Number(m[2]),mo=Number(m[3]),d=Number(m[4]);const dt=new Date(y,mo-1,d);if(dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d)return dt.getTime();}
+  return null;
+ };
+ const dated=(sheetNames||[]).map((name,index)=>({name,index,time:parseSheetDate(name)})).filter(x=>x.time!==null);
+ if(dated.length)return dated.sort((a,b)=>b.time-a.time||b.index-a.index)[0].name;
+ return (sheetNames||[]).length ? sheetNames[sheetNames.length-1] : null;
+}
 function headerIndex(headers, tests){return headers.findIndex(h=>tests.some(t=>String(h||'').toLocaleLowerCase('pt-PT').replace(/\s+/g,' ').includes(t)))}
 function importConcreteExcel(file){
  if(!window.XLSX){alert('Não foi possível carregar o leitor Excel. Verifica a ligação à internet e tenta novamente.');return}
  const reader=new FileReader();reader.onload=e=>{
   try{
    const wb=XLSX.read(e.target.result,{type:'array'});
-   const sheetName=wb.SheetNames.includes('02.10.2026')?'02.10.2026':wb.SheetNames[0];
+   const sheetName=getLatestDatedSheetName(wb.SheetNames);
    if(!sheetName)throw new Error('O ficheiro Excel não contém folhas.');
    const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null});let headerRow=-1,headers=[];
    for(let i=0;i<Math.min(matrix.length,25);i++){
