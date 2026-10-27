@@ -1631,9 +1631,11 @@ function importConcreteExcel(file){
     gravel410:headerIndex(headers,['brita 4/10']),gravel814:headerIndex(headers,['brita 8/14']),gravel1122:headerIndex(headers,['brita 11/22']),
     // Cimentos: identificar pelo cabeçalho; se não for possível, usar H e I.
      // H (índice 7) = CEM II; I (índice 8) = CEM I. Importa ambos quando têm valores.
-     // Identifica os cimentos pelo texto do cabeçalho, sem assumir que H ou I correspondem a um tipo fixo.
-     cementII:headers.findIndex(x=>x.includes('cem ii') && (x.includes('42,5')||x.includes('42.5'))),
-     cementI:headers.findIndex(x=>x.includes('cem i') && !x.includes('cem ii') && (x.includes('52,5')||x.includes('52.5'))),
+     // Mapeamento confirmado no Excel F 69_04_Composições_Betão:
+     // Coluna H = CEM I 52,5R; coluna I = CEM II/A-L 42,5R.
+     // Primeiro identifica pelo cabeçalho exato; se este não estiver disponível, usa a posição confirmada.
+     cementI:(()=>{const j=headers.findIndex(x=>x.includes('cem i')&&!x.includes('cem ii')&&(x.includes('52,5')||x.includes('52.5')));return j>=0?j:7;})(),
+     cementII:(()=>{const j=headers.findIndex(x=>x.includes('cem ii')&&(x.includes('42,5')||x.includes('42.5')));return j>=0?j:8;})(),
      filler:headerIndex(headers,['filler']),
     water:headerIndex(headers,['água','agua']),serenis:headerIndex(headers,['serenis']),plast700:headerIndex(headers,['plast 700']),optima88:headerIndex(headers,['optima 88']),tard33:headerIndex(headers,['tard33']),
     density:headerIndex(headers,['massa volúmica','massa volumica']),waterBinder:headerIndex(headers,['relação água/ligante','relacao agua/ligante'])
