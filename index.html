@@ -59,6 +59,18 @@ body.concrete-focus main>*:not(#concretePanel){display:none!important;}
 body.concrete-focus #concretePanel{display:block!important;margin-top:0!important;}
 body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;}
 
+
+
+/* Lista de composições: manter o formato original de tabela também no telemóvel, com deslocamento horizontal */
+.concrete-composition-scroller{overflow:auto;overscroll-behavior:contain;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
+@media (max-width:700px){
+  #concreteCompositionScroller{max-height:65vh!important;overflow:auto!important;border:1px solid var(--line)!important;border-radius:12px!important}
+  #concreteCompositionScroller table{display:table!important;width:100%!important;min-width:910px!important;table-layout:fixed!important;border-collapse:separate!important}
+  #concreteCompositionScroller thead{display:table-header-group!important}
+  #concreteCompositionScroller tbody{display:table-row-group!important}
+  #concreteCompositionScroller tbody tr{display:table-row!important;margin:0!important;padding:0!important;border-radius:0!important;box-shadow:none!important}
+  #concreteCompositionScroller tbody td{display:table-cell!important;position:static!important;left:auto!important;width:auto!important;max-width:none!important;white-space:nowrap!important;padding:8px!important;border-bottom:1px solid var(--line)!important;background:#fff!important}
+}
 </style>
 </head>
 <body>
@@ -1589,27 +1601,70 @@ function importConcreteExcel(file){
  if(!window.XLSX){alert('Não foi possível carregar o leitor Excel. Verifica a ligação à internet e tenta novamente.');return}
  const reader=new FileReader();reader.onload=e=>{
   try{
-   const wb=XLSX.read(e.target.result,{type:'array'});if(!wb.SheetNames.includes('02.10.2026'))throw new Error('O ficheiro não contém a folha 02.10.2026. Não foram importadas outras folhas.');
-   const matrix=XLSX.utils.sheet_to_json(wb.Sheets['02.10.2026'],{header:1,defval:null});let headerRow=-1,headers=[];
-   for(let i=0;i<Math.min(matrix.length,20);i++){const cells=(matrix[i]||[]).map(x=>String(x||'').trim());if(cells.some(x=>x.toLocaleLowerCase('pt-PT')==='código')&&cells.some(x=>x.toLocaleLowerCase('pt-PT').includes('designação'))){headerRow=i;headers=cells;break}}
-   if(headerRow<0)throw new Error('Não encontrei os cabeçalhos Código e Designação na folha 02.10.2026.');
-   const idx={
-    code:headerIndex(headers,['código']),name:headerIndex(headers,['designação']),
-    sandFine:headerIndex(headers,['areia fina']),sandMedium:headerIndex(headers,['areia média']),
-    gravel410:headerIndex(headers,['brita 4/10']),gravel814:headerIndex(headers,['brita 8/14']),gravel1122:headerIndex(headers,['brita 11/22']),
-    cementII:headers.findIndex(h=>String(h||'').toLocaleLowerCase('pt-PT').replace(/\s+/g,' ').includes('cem ii/a-l 42,5r')&&String(h||'').toLocaleLowerCase('pt-PT').includes('silo1')),cementI:headers.findIndex(h=>String(h||'').toLocaleLowerCase('pt-PT').replace(/\s+/g,' ').includes('cem i/a-l 52,5r')&&String(h||'').toLocaleLowerCase('pt-PT').includes('silo2')),filler:headerIndex(headers,['filler']),
-    water:headerIndex(headers,['água']),serenis:headerIndex(headers,['serenis']),plast700:headerIndex(headers,['plast 700']),optima88:headerIndex(headers,['optima 88']),tard33:headerIndex(headers,['tard33']),
-    density:headerIndex(headers,['massa volúmica']),waterBinder:headerIndex(headers,['relação água/ligante'])
-   };
-   const next=[];for(let i=headerRow+1;i<matrix.length;i++){const row=matrix[i]||[],code=idx.code>=0?row[idx.code]:null,name=idx.name>=0?row[idx.name]:null;if(!code&&!name)continue;
-    const c={code:String(code||'').trim(),name:String(name||'').trim(),margin:23,transport:14,extra1Name:'',extra1Price:0,extra1Qty:0,extra2Name:'',extra2Price:0,extra2Qty:0};
-    Object.keys(idx).filter(k=>!['code','name'].includes(k)).forEach(k=>{const j=idx[k];c[k]=j>=0?(Number(row[j])||0):0});
-    const old=concreteCompositions.find(x=>String(x.code)===c.code);if(old){c.margin=old.margin??23;c.transport=old.transport??14;['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>c[k]=old[k]??c[k])}
-    next.push(c);
+   const wb=XLSX.read(e.target.result,{type:'array'});
+   const sheetName=wb.SheetNames.includes('02.10.2026')?'02.10.2026':wb.SheetNames[0];
+   if(!sheetName)throw new Error('O ficheiro Excel não contém folhas.');
+   const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null});let headerRow=-1,headers=[];
+   for(let i=0;i<Math.min(matrix.length,25);i++){
+    const cells=(matrix[i]||[]).map(x=>String(x||'').trim().toLocaleLowerCase('pt-PT'));
+    if(cells.some(x=>x==='código'||x==='codigo')&&cells.some(x=>x.includes('designação')||x.includes('designacao'))){headerRow=i;headers=cells;break}
    }
-   if(!next.length)throw new Error('Não encontrei composições válidas para importar.');
-   if(!confirm(`Foram encontradas ${next.length} composições na folha 02.10.2026. A importação substituirá a lista atual, preservando margem, transporte e materiais extra para códigos já existentes. Continuar?`))return;
-   concreteCompositions=next;saveConcreteData();alert(`${next.length} composições importadas com sucesso da folha 02.10.2026.`);
+   if(headerRow<0)throw new Error('Não encontrei os cabeçalhos Código e Designação na folha '+sheetName+'.');
+   const idx={
+    code:headerIndex(headers,['código','codigo']),name:headerIndex(headers,['designação','designacao']),
+    sandFine:headerIndex(headers,['areia fina']),sandMedium:headerIndex(headers,['areia média','areia media']),
+    gravel410:headerIndex(headers,['brita 4/10']),gravel814:headerIndex(headers,['brita 8/14']),gravel1122:headerIndex(headers,['brita 11/22']),
+    cementII:headers.findIndex(x=>x.includes('cem ii/a-l 42,5r')&&x.includes('silo1')),cementI:headers.findIndex(x=>x.includes('cem i/a-l 52,5r')&&x.includes('silo2')),filler:headerIndex(headers,['filler']),
+    water:headerIndex(headers,['água','agua']),serenis:headerIndex(headers,['serenis']),plast700:headerIndex(headers,['plast 700']),optima88:headerIndex(headers,['optima 88']),tard33:headerIndex(headers,['tard33']),
+    density:headerIndex(headers,['massa volúmica','massa volumica']),waterBinder:headerIndex(headers,['relação água/ligante','relacao agua/ligante'])
+   };
+   const oldByCode=new Map(concreteCompositions.map(c=>[String(c.code||'').trim(),c]));
+   const incomingByCode=new Map(),duplicateCodes=[];
+   for(let i=headerRow+1;i<matrix.length;i++){
+    const row=matrix[i]||[],code=idx.code>=0?row[idx.code]:null,name=idx.name>=0?row[idx.name]:null;
+    if(!code&&!name)continue;
+    const codeText=String(code||'').trim();if(!codeText)continue;
+    if(incomingByCode.has(codeText)){duplicateCodes.push(codeText);continue}
+    const c={code:codeText,name:String(name||'').trim(),margin:23,transport:14,extra1Name:'',extra1Price:0,extra1Qty:0,extra2Name:'',extra2Price:0,extra2Qty:0};
+    Object.keys(idx).filter(k=>!['code','name'].includes(k)).forEach(k=>{const j=idx[k];c[k]=j>=0?(Number(row[j])||0):0});
+    const old=oldByCode.get(codeText);
+    if(old){
+      c.margin=old.margin??23;c.transport=old.transport??14;
+      ['extra1Name','extra1Price','extra1Qty','extra2Name','extra2Price','extra2Qty'].forEach(k=>c[k]=old[k]??c[k]);
+    }
+    incomingByCode.set(codeText,c);
+   }
+   if(!incomingByCode.size)throw new Error('Não encontrei composições com uma referência válida.');
+   const technicalKeys=['name','sandFine','sandMedium','gravel410','gravel814','gravel1122','cementII','cementI','filler','water','serenis','plast700','optima88','tard33','density','waterBinder'];
+   const added=[],updated=[],unchanged=[];
+   incomingByCode.forEach((c,code)=>{
+    const old=oldByCode.get(code);
+    if(!old){added.push(c);return}
+    const changed=technicalKeys.some(k=>String(old[k]??'')!==String(c[k]??''));
+    if(changed)updated.push(c);else unchanged.push(c);
+  });
+   const newCodes=new Set(incomingByCode.keys());
+   const keptOld=concreteCompositions.filter(c=>!newCodes.has(String(c.code||'').trim()));
+   const preview=[
+    'Pré-visualização da importação ('+sheetName+')',
+    '',
+    'Novas composições: '+added.length,
+    'Composições existentes com alterações: '+updated.length,
+    'Composições sem alterações: '+unchanged.length,
+    'Composições antigas que serão mantidas por não constarem no Excel: '+keptOld.length,
+    'Referências duplicadas no Excel ignoradas: '+duplicateCodes.length,
+    '',
+    'Nas composições existentes serão preservados margem, transporte e materiais extra.',
+    'As composições que não constam no Excel não serão apagadas.',
+    '',
+    'Queres confirmar a importação?'
+  ].join('\\n');
+   if(!confirm(preview))return;
+   // Merge by unique reference: incoming values update the technical mix, commercial fields remain.
+   const merged=[...keptOld,...Array.from(incomingByCode.values())];
+   concreteCompositions=merged;
+   saveConcreteData();
+   alert('Importação concluída.\\n\\nNovas: '+added.length+'\\nAtualizadas: '+updated.length+'\\nSem alterações: '+unchanged.length+'\\nMantidas fora do Excel: '+keptOld.length+(duplicateCodes.length?'\\nReferências duplicadas ignoradas: '+duplicateCodes.length:'')+'.');
   }catch(err){alert('Não foi possível importar as composições: '+err.message)}
  };reader.readAsArrayBuffer(file);
 }
