@@ -846,10 +846,10 @@ function sendCalibrationReminder(record,channel){
     'Obrigado.'
   ].filter(Boolean).join('\\n');
   if(channel==='whatsapp'){
-    // Abre a seleção de destinatário do WhatsApp sem exigir contacto guardado no registo.
-    window.open('https://wa.me/?text='+encodeURIComponent(body),'_blank','noopener,noreferrer');
+    // Abre a aplicação WhatsApp com o texto preenchido, sem definir destinatário.
+    window.location.href='https://api.whatsapp.com/send?text='+encodeURIComponent(body);
   }else{
-    // Abre o cliente de email sem destinatário; o utilizador escolhe-o na sua lista.
+    // mailto abre o cliente de email predefinido (ex.: Outlook) com assunto e corpo, sem destinatário.
     window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   }
 }
