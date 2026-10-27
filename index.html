@@ -856,14 +856,14 @@ function renderRecords(kind){
     const values=[r.area,r.equipment,r.status,r.date?(isM?maintenanceDateLabel:'Data · ')+dateLabel(r.date):'',r.next?(isM?'Próxima manutenção · ':'Próxima · ')+dateLabel(r.next):'',reminderText,r.owner?'Responsável · '+r.owner:''].filter(Boolean);
     values.forEach((v)=>{const chip=document.createElement('span');chip.className='chip'+(/Não conforme|Adiada/.test(v)?' high':'');if(v===r.area){chip.classList.add(r.area==='Pedreira'?'area-pedreira':r.area==='Betão'?'area-betao':'area-outro')}if((isM&&r.status!=='Realizada'&&v==='Previsão · '+dateLabel(r.date))||(r.next&&v===(isM?'Próxima manutenção · ':'Próxima · ')+dateLabel(r.next))){const today=localToday(),days=Math.ceil((new Date(reminderDate+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);chip.classList.add(days<0?'next-overdue':days<=30?'next-soon':'next-date')}chip.textContent=v;chips.append(chip)});
     content.append(chips);
+    if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
     if(isM&&r.status==='Realizada'&&r.next){
       const nextLine=document.createElement('div');
-      nextLine.className='sub';
-      nextLine.style.cssText='display:block;margin-top:8px;padding:9px 11px;border:1px solid #b9d8c7;border-radius:9px;background:#f0f8f3;color:#174d34;font-weight:600';
-      nextLine.textContent='Próxima manutenção prevista: '+dateLabel(r.next)+' · aviso '+(Number(r.reminder||0)?Number(r.reminder)+' dias antes':'desativado');
+      nextLine.className='maintenance-next-date';
+      nextLine.style.cssText='display:block;margin-top:12px;padding:12px 14px;border:1px solid #8bc5a5;border-left:6px solid #16834a;border-radius:10px;background:#edf8f1;color:#14532d;font-size:1.12rem;font-weight:750;line-height:1.45';
+      nextLine.textContent='PRÓXIMA MANUTENÇÃO PREVISTA: '+dateLabel(r.next)+' · AVISO '+(Number(r.reminder||0)?Number(r.reminder)+' DIAS ANTES':'DESATIVADO');
       content.append(nextLine);
     }
-    if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}
     appendRecordPhotos(content,r.photos,isM?'Fotografia da manutenção':'Fotografia da calibração/ensaio');
     const actions=document.createElement('div');actions.className='taskactions';
     const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>fillRecordForm(kind,r);
@@ -911,6 +911,7 @@ function setupRecordForm(kind){
     e.preventDefault();
     const r={id:$(prefix+'Id').value||Date.now().toString(36)+Math.random().toString(36).slice(2,7)};
     fields.forEach(f=>{const el=$(prefix+f.charAt(0).toUpperCase()+f.slice(1));r[f]=el?el.value.trim():''});
+    if(isM){const nextInput=$('maintenanceNext');r.next=nextInput?nextInput.value:'';}
     const arr=isM?maintenanceRecords:calibrationRecords, idx=arr.findIndex(x=>x.id===r.id);
     if(idx>=0)arr[idx]=r;else arr.push(r);
     saveRecords(kind);resetRecordForm(kind);
