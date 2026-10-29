@@ -1819,6 +1819,14 @@ $('concreteNav').onclick=()=>$('concreteOpen').click();
 $('concreteClose').onclick=()=>{ $('concretePanel').classList.add('hidden');document.body.classList.remove('concrete-focus');window.scrollTo({top:0,behavior:'smooth'}); };
 $('concreteEditClose').onclick=()=>$('concreteEditPanel').classList.add('hidden');
 $('concreteEditSave').onclick=saveConcreteEdit;
+function setConcreteTab(tab){
+ const map={compositions:'concreteCompositionsTab',materials:'concreteMaterialsTab',simulator:'concreteSimulatorTab',proposal:'concreteProposalTab',compliance:'concreteComplianceTab'};
+ if(!Object.prototype.hasOwnProperty.call(map,tab))tab='compositions';
+ Object.entries(map).forEach(([key,id])=>{const el=$(id);if(el)el.classList.toggle('hidden',key!==tab);});
+ document.querySelectorAll('#concreteTabs [data-ctab]').forEach(btn=>{const active=btn.dataset.ctab===tab;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',active?'true':'false');});
+ if(tab==='compliance'&&typeof renderComplianceUI==='function')renderComplianceUI();
+ if(tab==='materials'&&typeof renderSimulatorLibrary==='function')renderSimulatorLibrary();
+}
 $('concreteTabs').addEventListener('click',e=>{const b=e.target.closest('[data-ctab]');if(b)setConcreteTab(b.dataset.ctab)});
 $('concreteSearch').addEventListener('input',renderConcrete);$('concreteReferenceFilter').addEventListener('input',renderConcrete);
 $('concreteToggleSelectedView').addEventListener('click',()=>{if(!concreteSelectedOnly&&concreteSelectedCodes.size===0){alert('Assinala primeiro pelo menos um betão que pretendes manter na lista.');return;}concreteSelectedOnly=!concreteSelectedOnly;try{localStorage.setItem('restradasBetaoMostrarSelecionadosV1',concreteSelectedOnly?'1':'0')}catch(e){}renderConcrete()});
