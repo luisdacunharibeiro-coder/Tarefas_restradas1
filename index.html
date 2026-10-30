@@ -1436,10 +1436,24 @@ function calcSimulator(){
 }
 $('simPdf').addEventListener('click',()=>{if(!concreteSimulatorDraft)calcSimulator();if(concreteSimulatorDraft)exportCompositionSheet(concreteSimulatorDraft,'download')});$('simWhatsapp').addEventListener('click',()=>{if(!concreteSimulatorDraft)calcSimulator();if(concreteSimulatorDraft)exportCompositionSheet(concreteSimulatorDraft,'whatsapp')});$('simEmail').addEventListener('click',()=>{if(!concreteSimulatorDraft)calcSimulator();if(concreteSimulatorDraft)exportCompositionSheet(concreteSimulatorDraft,'email')});
 function saveSimulator(){
- if(!concreteSimulatorDraft){calcSimulator();if(!concreteSimulatorDraft)return}
- const c=concreteSimulatorDraft;if(concreteCompositions.some(x=>String(x.code)===String(c.code))){c.code=c.code+'-'+Date.now().toString().slice(-3)}
- c.density=0;c.waterBinder=0;
- concreteCompositions.push(c);saveConcreteData();alert('Composição adicionada ao módulo.');setConcreteTab('compositions');
+ // Ler sempre os campos atuais. Assim, alterações feitas depois de carregar uma composição-modelo
+ // também são incluídas, mesmo que o utilizador não volte a carregar em Calcular.
+ const c=readSimulator();
+ if(!String(c.name||'').trim()){alert('Indica a designação da nova composição.');$('simName').focus();return}
+ if(!String(c.code||'').trim()){alert('Indica uma referência para a nova composição.');$('simCode').focus();return}
+ const originalCode=String(c.code).trim();
+ if(concreteCompositions.some(x=>String(x.code).trim().toLowerCase()===originalCode.toLowerCase())){
+  c.code=originalCode+'-'+Date.now().toString().slice(-5);
+ }
+ c.name=String(c.name).trim();c.density=Number(c.density)||0;c.waterBinder=0;
+ c.margin=Math.max(0,Number(c.margin)||0);c.transport=Math.max(0,Number(c.transport)||0);
+ concreteMaterialMeta.forEach(([k])=>c[k]=Math.max(0,Number(c[k])||0));
+ c.customMaterials=Array.isArray(c.customMaterials)?c.customMaterials:[];
+ concreteCompositions.push(c);
+ saveConcreteData();
+ concreteSimulatorDraft=null;$('simSave').disabled=true;
+ alert('Nova composição guardada com sucesso na lista de composições.');
+ setConcreteTab('compositions');renderConcrete();
 }
 function makeMiniAction(label,fn){const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;b.style.cssText='margin:3px;padding:6px 8px;font-size:11px';b.onclick=fn;return b}
 function compositionQuantityLines(c){const lines=[];concreteMaterialMeta.forEach(([k,label])=>{const q=Number(c[k])||0;if(q>0)lines.push({label,qty:q,unit:'kg/m³'})});if((Number(c.otherAdjuvantQty)||0)>0&&String(c.otherAdjuvantName||'').trim())lines.push({label:String(c.otherAdjuvantName).trim()+' (outro adjuvante)',qty:Number(c.otherAdjuvantQty),unit:'kg/m³'});if(Array.isArray(c.customMaterials))c.customMaterials.forEach(m=>{if((Number(m.qty)||0)>0)lines.push({label:(m.name||'Material extra')+(m.note?' — '+m.note:''),qty:Number(m.qty)||0,unit:m.qtyUnit==='lt'?'Lt/m³':'kg/m³'});});if(Array.isArray(c.customMaterials))c.customMaterials.forEach(m=>{if((Number(m.qty)||0)>0)lines.push({label:m.name||'Material extra',qty:Number(m.qty)||0,unit:'kg/m³'})});return lines}
@@ -1601,7 +1615,8 @@ async function renderProposalArchive(){
    content.append(title,meta);
    const actions=document.createElement('div');actions.style.cssText='display:flex;flex:0 1 auto;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;';
    const btn=(label,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.style.cssText='width:auto;min-width:82px;max-width:130px;min-height:42px;white-space:normal;flex:0 0 auto;padding:8px 12px;';b.onclick=fn;actions.append(b)};
-   btn('Exportar','secondary',()=>downloadProposal(item));
+   btn('Abrir PDF','secondary',()=>openProposalPdf(item));
+   btn('Descarregar','secondary',()=>downloadProposal(item));
    btn('Email','secondary',()=>shareProposal(item,'email'));
    btn('WhatsApp','secondary',()=>shareProposal(item,'whatsapp'));
    btn('Apagar','danger',async()=>{if(confirm('Apagar definitivamente este PDF do arquivo da aplicação?')){await deleteProposalPdf(item.id);renderProposalArchive()}});
@@ -1609,27 +1624,37 @@ async function renderProposalArchive(){
   });
  }catch(err){host.innerHTML='<div class="empty">Não foi possível abrir o arquivo local de propostas: '+safeText(err.message||'erro')+'</div>'}
 }
+function proposalObjectUrl(item){return URL.createObjectURL(item.blob)}
+function openProposalPdf(item){
+ // Esta ação é explícita: a proposta já está guardada no arquivo antes de ser aberta.
+ const url=proposalObjectUrl(item);const w=window.open(url,'_blank');
+ if(!w){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();}
+ setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
 function downloadProposal(item){
- const url=URL.createObjectURL(item.blob);const a=document.createElement('a');a.href=url;a.download=item.filename||'Proposta_Restradas.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ const url=proposalObjectUrl(item);const a=document.createElement('a');a.href=url;a.download=item.filename||'Proposta_Restradas.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 async function shareProposal(item,mode){
  const file=new File([item.blob],item.filename||'Proposta_Restradas.pdf',{type:'application/pdf'});
  const message=`Proposta comercial Restradas${item.ref?' '+item.ref:''}${item.work?' — Obra: '+item.work:''}`;
+ // No iPhone, a folha nativa de partilha permite escolher WhatsApp, Mail e o contacto,
+ // levando o próprio PDF como anexo (sem enviar automaticamente).
  try{
   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
    await navigator.share({title:message,text:message,files:[file]});return;
   }
- }catch(err){if(err.name==='AbortError')return;console.warn('Partilha direta indisponível',err)}
- const url=URL.createObjectURL(item.blob);const preview=window.open(url,'_blank');
- if(!preview){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();}
+ }catch(err){if(err.name==='AbortError')return;console.warn('Partilha nativa indisponível',err)}
+ // Fallback: descarrega o PDF e abre a aplicação escolhida com o texto. Nunca substitui a página da Restradas.
+ downloadProposal(item);
+ const suffix='\n\nO PDF foi descarregado. Anexa o ficheiro '+(item.filename||'Proposta_Restradas.pdf')+' antes de enviar.';
  if(mode==='email'){
-  const subject=encodeURIComponent(message),body=encodeURIComponent('Segue a proposta comercial em PDF.\n\n'+message+'\n\nAnexa o PDF que ficou aberto noutra página.');
-  window.location.href=`mailto:?subject=${subject}&body=${body}`;
+  const subject=encodeURIComponent(message),body=encodeURIComponent('Segue a proposta comercial em PDF.\n\n'+message+suffix);
+  window.open(`mailto:?subject=${subject}&body=${body}`,'_blank');
  }else{
-  const text=encodeURIComponent(message+'\n\nAnexa o PDF que ficou aberto noutra página.');
+  const text=encodeURIComponent(message+suffix);
   window.open('https://wa.me/?text='+text,'_blank','noopener');
  }
- setTimeout(()=>URL.revokeObjectURL(url),120000);
+ alert('A partilha com PDF anexado não está disponível neste navegador. O PDF foi descarregado; anexa-o à mensagem antes de enviar.');
 }
 async function generateConcreteProposal(){
  const selected=Array.from($('proposalRows').querySelectorAll('input[type=checkbox]:checked')).map(chk=>{
