@@ -1726,15 +1726,22 @@ function exportConcreteExcel(){
  if(!window.XLSX){alert('Não foi possível carregar o exportador Excel. Verifica a ligação à internet e tenta novamente.');return}
  const includeCommercial=$('concreteExportCommercial').checked;
  try{
+  // A lista geral renderizada no ecrã e a exportação usam exatamente a mesma coleção.
+  // Não juntar dados antigos do localStorage: isso podia reintroduzir versões antigas
+  // ou duplicar composições cujo código foi alterado.
+  const exportCompositions=Array.isArray(concreteCompositions)
+   ? concreteCompositions.filter(c=>c && String(c.code||'').trim()).map(c=>({...c})) : [];
+  if(!exportCompositions.length)throw new Error('A lista atual de composições está vazia. Não foi criado nenhum Excel.');
+  const codes=exportCompositions.map(c=>String(c.code).trim());
+  const duplicates=codes.filter((code,i)=>codes.indexOf(code)!==i);
+  if(duplicates.length)throw new Error('Existem códigos repetidos na lista ('+[...new Set(duplicates)].join(', ')+'). Corrige-os antes de exportar.');
   const binary=atob(CONCRETE_EXCEL_TEMPLATE_B64),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   const wb=XLSX.read(bytes,{type:'array',cellStyles:true,cellNF:true});
   const sheetName=getLatestDatedSheetName(wb.SheetNames);
   if(!sheetName || !wb.Sheets[sheetName])throw new Error('Não foi encontrada uma folha com data válida no Excel modelo.');
-  // Exportar exclusivamente a folha com a data mais recente, mantendo o layout e a formatação do Excel original.
   wb.SheetNames=[sheetName];
   const ws=wb.Sheets[sheetName];
-  const cloneStyleCell=(from,to)=>{if(ws[from]){ws[to]={...ws[from]};if(ws[from].s)ws[to].s=JSON.parse(JSON.stringify(ws[from].s));delete ws[to].v;delete ws[to].w;}};
   const put=(addr,value,styleFrom)=>{
    const old=ws[addr]||{};const cell={...old};
    if(styleFrom&&ws[styleFrom]?.s)cell.s=JSON.parse(JSON.stringify(ws[styleFrom].s));
@@ -1745,38 +1752,37 @@ function exportConcreteExcel(){
   };
   const colName=n=>{let out='';while(n>0){const r=(n-1)%26;out=String.fromCharCode(65+r)+out;n=Math.floor((n-1)/26)}return out};
   const baseKeys=['code','name','sandFine','sandMedium','gravel410','gravel814','gravel1122','cementII','cementI','filler','water','serenis','plast700','optima88','tard33','density','waterBinder'];
-  // Limpar valores antigos sem mexer na estrutura/estilo das linhas da folha modelo.
-  for(let r=6;r<=243;r++)for(let c=1;c<=17;c++)put(colName(c)+r,null,colName(c)+r);
-  concreteCompositions.forEach((comp,i)=>{
+  const lastDataRow=5+exportCompositions.length;
+  // Limpa todas as linhas de dados existentes no modelo e escreve novamente a lista completa.
+  const existingEnd=Math.max(243,Number(String(ws['!ref']||'A1').match(/\d+$/)?.[0]||243),lastDataRow);
+  for(let r=6;r<=existingEnd;r++)for(let c=1;c<=17;c++)put(colName(c)+r,null,colName(c)+Math.min(r,243));
+  exportCompositions.forEach((comp,i)=>{
    const r=6+i;
    baseKeys.forEach((key,j)=>put(colName(j+1)+r,comp[key]??(j<2?'':0),colName(j+1)+Math.min(r,243)));
   });
-  // Atualizar o título com a data base da folha enviada e manter a nota de cálculo original.
-  put('A2','Composições de betão — folha mais recente','A2');
-  // Opcionalmente, acrescentar as quatro colunas comerciais à direita da composição.
+  put('A2','Composições de betão — lista atual da aplicação','A2');
   const commercialHeaders=['Margem (%)','Transporte (€/m³)','Custo de produção (€/m³)','Custo final (€/m³)'];
   const commercialCols=['R','S','T','U'];
   if(includeCommercial){
    put('R4','Análise comercial','P4');
    commercialHeaders.forEach((h,i)=>put(commercialCols[i]+'5',h,'Q5'));
-   concreteCompositions.forEach((comp,i)=>{
+   exportCompositions.forEach((comp,i)=>{
     const r=6+i,raw=concreteRawCost(comp);
-    const vals=[Number(comp.margin??23),Number(comp.transport??14),Number(raw.total.toFixed(4)),Number(concreteSalePrice(comp).toFixed(4))];
-    vals.forEach((v,j)=>put(commercialCols[j]+r,v,'Q'+Math.min(r,243)));
+    [Number(comp.margin??23),Number(comp.transport??14),Number(raw.total.toFixed(4)),Number(concreteSalePrice(comp).toFixed(4))].forEach((v,j)=>put(commercialCols[j]+r,v,'Q'+Math.min(r,243)));
    });
    ws['!merges']=(ws['!merges']||[]).filter(m=>!(m.s.r===3&&m.s.c>=17));
    ws['!merges'].push({s:{r:3,c:17},e:{r:3,c:20}});
    ws['!cols']=ws['!cols']||[];
-   [{wch:22},{wch:22},{wch:13},{wch:20}].forEach((col,i)=>ws['!cols'][17+i]=col);
+   [{wch:22},{wch:22},{wch:22},{wch:20}].forEach((col,i)=>ws['!cols'][17+i]=col);
   }else{
-   ['R','S','T','U'].forEach(col=>{for(let r=4;r<=243;r++){delete ws[col+r]}});
+   ['R','S','T','U'].forEach(col=>{for(let r=4;r<=existingEnd;r++){delete ws[col+r]}});
    ws['!merges']=(ws['!merges']||[]).filter(m=>!(m.s.r===3&&m.s.c>=17));
    if(ws['!cols'])ws['!cols']=ws['!cols'].slice(0,17);
   }
-  const lastRow=Math.max(244,5+concreteCompositions.length);
-  ws['!ref']='A2:'+(includeCommercial?'U':'Q')+lastRow;
-  // O título e a nota mantêm as células combinadas existentes no modelo original.
+  ws['!ref']='A2:'+(includeCommercial?'U':'Q')+Math.max(5+exportCompositions.length,244);
   XLSX.writeFile(wb,'Composicoes_Betao_'+localToday()+(includeCommercial?'_com_analise_comercial':'_dosagens')+'.xlsx',{cellStyles:true});
+  console.info('Excel exportado a partir da lista geral atual:',exportCompositions.length,'composições. Inclui BET.1761.CEMI.BE se presente na lista.');
+  alert('Excel exportado com '+exportCompositions.length+' composições da lista atual.');
  }catch(err){console.error(err);alert('Não foi possível exportar o Excel. '+(err.message||'Tenta novamente.'));}
 }
 
