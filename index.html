@@ -1730,7 +1730,9 @@ function exportConcreteExcel(){
   // Não juntar dados antigos do localStorage: isso podia reintroduzir versões antigas
   // ou duplicar composições cujo código foi alterado.
   const exportCompositions=Array.isArray(concreteCompositions)
-   ? concreteCompositions.filter(c=>c && String(c.code||'').trim()).map(c=>({...c})) : [];
+   ? concreteCompositions.filter(c=>c && String(c.code||'').trim()).map(c=>({...c})).sort((a,b)=>
+      String(a.code||'').localeCompare(String(b.code||''),'pt-PT',{numeric:true,sensitivity:'base'})
+     ) : [];
   if(!exportCompositions.length)throw new Error('A lista atual de composições está vazia. Não foi criado nenhum Excel.');
   const codes=exportCompositions.map(c=>String(c.code).trim());
   const duplicates=codes.filter((code,i)=>codes.indexOf(code)!==i);
@@ -1781,7 +1783,7 @@ function exportConcreteExcel(){
   }
   ws['!ref']='A2:'+(includeCommercial?'U':'Q')+Math.max(5+exportCompositions.length,244);
   XLSX.writeFile(wb,'Composicoes_Betao_'+localToday()+(includeCommercial?'_com_analise_comercial':'_dosagens')+'.xlsx',{cellStyles:true});
-  console.info('Excel exportado a partir da lista geral atual:',exportCompositions.length,'composições. Inclui BET.1761.CEMI.BE se presente na lista.');
+  console.info('Excel exportado pela mesma ordenação natural da lista geral:',exportCompositions.length,'composições.');
   alert('Excel exportado com '+exportCompositions.length+' composições da lista atual.');
  }catch(err){console.error(err);alert('Não foi possível exportar o Excel. '+(err.message||'Tenta novamente.'));}
 }
