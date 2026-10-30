@@ -292,6 +292,8 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
       <div id="concreteEditPanel" class="panel hidden" style="margin-top:14px;background:#f8fbf9">
         <div class="panelhead"><div><h2 id="concreteEditTitle">Editar composição</h2><div class="sub">Margem e transporte individuais; materiais extra por composição</div></div><button class="secondary" id="concreteEditClose">Fechar</button></div>
         <div class="formgrid">
+          <div><label for="ccCode">Código da composição</label><input id="ccCode" type="text" maxlength="80" placeholder="Ex.: BET.1234"></div>
+          <div><label for="ccName">Nome / designação da composição</label><input id="ccName" type="text" maxlength="180" placeholder="Designação da composição"></div>
           <div><label for="ccMargin">Margem (%)</label><input id="ccMargin" type="number" min="0" step="0.1" value="23"></div>
           <div><label for="ccTransport">Transporte (€/m³)</label><input id="ccTransport" type="number" min="0" step="0.01" value="14"></div>
         </div>
@@ -1284,6 +1286,7 @@ function renderConcreteCosts(){
 function openConcreteEdit(code){
  const c=concreteCompositions.find(x=>String(x.code)===String(code));if(!c)return;concreteEditingCode=code;
  $('concreteEditTitle').textContent=(c.code?c.code+' · ':'')+c.name;
+ $('ccCode').value=c.code||'';$('ccName').value=c.name||'';
  $('ccMargin').value=c.margin??23;$('ccTransport').value=c.transport??14;
  // Campos editáveis para as quantidades de todos os materiais base da composição.
  // Garante que existe apenas um contentor de quantidades no editor, mesmo após várias edições.
@@ -1336,11 +1339,18 @@ function renderCompositionLibraryMaterials(c,items){
 }
 function saveConcreteEdit(){
  const c=concreteCompositions.find(x=>String(x.code)===String(concreteEditingCode));if(!c)return;
+ const oldCode=String(c.code||'');const newCode=String($('ccCode')?.value||'').trim();const newName=String($('ccName')?.value||'').trim();
+ if(!newCode){alert('Indica o código da composição.');$('ccCode')?.focus();return;}
+ if(!newName){alert('Indica o nome/designação da composição.');$('ccName')?.focus();return;}
+ const duplicate=concreteCompositions.find(x=>x!==c&&String(x.code||'').trim().toLowerCase()===newCode.toLowerCase());
+ if(duplicate){alert('Já existe uma composição com o código '+newCode+'. Escolhe um código diferente.');$('ccCode')?.focus();return;}
+ c.code=newCode;c.name=newName;
+ if(oldCode!==newCode){if(concreteSelectedCodes.has(oldCode)){concreteSelectedCodes.delete(oldCode);concreteSelectedCodes.add(newCode);saveConcreteSelection();}concreteEditingCode=newCode;}
  c.margin=Math.max(0,Number($('ccMargin').value)||0);c.transport=Math.max(0,Number($('ccTransport').value)||0);
  concreteMaterialMeta.forEach(([key])=>{const inp=$('ccqty_'+key);if(inp)c[key]=Math.max(0,Number(inp.value)||0)});
  c.customMaterials=readCompositionLibraryMaterials();c.observation=String($('ccCompositionObservation')?.value||'').trim();
  c.otherAdjuvantName=String($('ccOtherAdjuvantName')?.value||'').trim();c.otherAdjuvantQty=Math.max(0,Number($('ccOtherAdjuvantQty')?.value)||0);c.otherAdjuvantPrice=Math.max(0,Number($('ccOtherAdjuvantPrice')?.value)||0);
- $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);saveConcreteData();$('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
+ $('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);saveConcreteData();$('concreteEditTitle').textContent=c.code+' · '+c.name;$('concreteEditCostBreakdown').innerHTML=concreteBreakdown(c);
 }
 const SIM_MATERIAL_LIBRARY_KEY='restradasSimuladorMateriaisExtraV1';
 let simulatorExtraLibrary=[];let simulatorLibraryEditingId=null;
