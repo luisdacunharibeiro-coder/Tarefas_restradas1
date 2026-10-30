@@ -78,6 +78,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
   #concreteCompositionScroller tbody tr{display:table-row!important;margin:0!important;padding:0!important;border-radius:0!important;box-shadow:none!important}
   #concreteCompositionScroller tbody td{display:table-cell!important;position:static!important;left:auto!important;width:auto!important;max-width:none!important;white-space:nowrap!important;padding:8px!important;border-bottom:1px solid var(--line)!important;background:#fff!important}
 }
+@media(max-width:700px){#proposalInlinePreview iframe{height:68vh!important;min-height:420px!important}}
 </style>
 </head>
 <body>
@@ -376,6 +377,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
       <section class="panel" style="margin-top:16px">
         <div class="panelhead"><div><h3>📁 Arquivo de propostas PDF</h3><div class="sub">Os PDFs ficam guardados primeiro neste dispositivo. Depois podes partilhar o ficheiro por Email ou WhatsApp.</div></div><button class="secondary" type="button" id="refreshProposalArchive">Atualizar</button></div>
         <div id="proposalArchiveList"><div class="empty">A carregar propostas guardadas…</div></div>
+        <div id="proposalInlinePreview" style="display:none;margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;background:#eef4f0"><strong>Pré-visualização da proposta guardada</strong><button class="secondary" type="button" id="closeProposalPreview">Fechar pré-visualização</button></div><iframe id="proposalPreviewFrame" title="Pré-visualização da proposta comercial" style="display:block;width:100%;height:75vh;min-height:520px;border:0;background:#fff"></iframe></div>
       </section>
     </div>
   </section>
@@ -1252,7 +1254,7 @@ function renderConcrete(){
  rows.forEach(c=>{
   const raw=concreteRawCost(c), sale=concreteSalePrice(c),tr=document.createElement('tr');tr.style.borderTop='1px solid #e0e7e3';
   const checkCell=document.createElement('td');checkCell.style.cssText='padding:8px;text-align:center';const check=document.createElement('input');check.type='checkbox';check.checked=concreteSelectedCodes.has(String(c.code));check.title='Assinala os betões que pretendes trabalhar; a lista só é filtrada quando carregares no botão acima';check.setAttribute('aria-label','Selecionar '+(c.code||''));check.style.cssText='width:17px;height:17px;cursor:pointer';check.addEventListener('change',()=>{const code=String(c.code);if(check.checked)concreteSelectedCodes.add(code);else concreteSelectedCodes.delete(code);saveConcreteSelection();renderConcrete()});checkCell.append(check);
-  const id=document.createElement('td');id.style.cssText='padding:6px 8px;width:340px;max-width:340px;white-space:nowrap';id.title=(c.code||'Sem código')+' — '+(c.name||'');const idLine=document.createElement('div');idLine.style.cssText='display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap';const idText=document.createElement('div');idText.style.cssText='min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1';idText.innerHTML=`<strong>${safeText(c.code||'Sem código')}</strong><span style="margin-left:6px;color:#68756f;white-space:nowrap">${safeText(c.name||'')}</span>`;const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Editar';b.style.cssText='flex:0 0 auto;margin:0;padding:5px 8px;font-size:11px;white-space:nowrap';b.onclick=()=>openConcreteEdit(c.code);idLine.append(idText,b);id.append(idLine);
+  const id=document.createElement('td');id.style.cssText='padding:6px 8px;width:340px;max-width:340px;white-space:nowrap';id.title=(c.code||'Sem código')+' — '+(c.name||'');const idLine=document.createElement('div');idLine.style.cssText='display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap';const idText=document.createElement('div');idText.style.cssText='min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1';idText.innerHTML=`<strong>${safeText(c.code||'Sem código')}</strong><span style="margin-left:6px;color:#68756f;white-space:nowrap">${safeText(c.name||'')}</span>`;const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Editar';b.style.cssText='flex:0 0 auto;margin:0;padding:5px 8px;font-size:11px;white-space:nowrap';b.onclick=()=>openConcreteEdit(c.code);const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Eliminar';del.title='Eliminar esta composição da lista';del.style.cssText='flex:0 0 auto;margin:0;padding:5px 8px;font-size:11px;white-space:nowrap;color:#a32626;border-color:#d9aaaa';del.onclick=()=>{const label=(c.code||'Sem código')+(c.name?' — '+c.name:'');if(!confirm('Tens a certeza de que pretendes eliminar a composição '+label+'?\n\nEsta ação não pode ser anulada. As propostas comerciais já guardadas não serão eliminadas.'))return;const code=String(c.code||'');const before=concreteCompositions.length;concreteCompositions=concreteCompositions.filter(x=>String(x.code||'')!==code);if(concreteCompositions.length===before){alert('Não foi possível localizar a composição para eliminar.');return;}concreteSelectedCodes.delete(code);saveConcreteSelection();saveConcreteData();if(typeof renderSimulator==='function')renderSimulator();};idLine.append(idText,b,del);id.append(idLine);
   const cost=document.createElement('td');cost.style.cssText='padding:10px;text-align:right;white-space:nowrap';cost.textContent=euro(raw.total);
   const margin=document.createElement('td');margin.style.cssText='padding:4px;text-align:right;width:62px';
   const marginInput=document.createElement('input');marginInput.type='number';marginInput.min='0';marginInput.step='0.1';marginInput.value=Number(c.margin??23);marginInput.title='Margem (%) — alterar diretamente';marginInput.setAttribute('aria-label','Margem percentual '+(c.code||''));marginInput.style.cssText='width:48px;max-width:100%;min-width:0;box-sizing:border-box;padding:6px 2px;text-align:right;font-size:11px';
@@ -1615,7 +1617,8 @@ async function renderProposalArchive(){
    content.append(title,meta);
    const actions=document.createElement('div');actions.style.cssText='display:flex;flex:0 1 auto;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;';
    const btn=(label,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.style.cssText='width:auto;min-width:82px;max-width:130px;min-height:42px;white-space:normal;flex:0 0 auto;padding:8px 12px;';b.onclick=fn;actions.append(b)};
-   btn('Abrir PDF','secondary',()=>openProposalPdf(item));
+   btn('Ver na aplicação','secondary',()=>showProposalPreview(item));
+   btn('Abrir noutra página','secondary',()=>openProposalPdf(item));
    btn('Descarregar','secondary',()=>downloadProposal(item));
    btn('Email','secondary',()=>shareProposal(item,'email'));
    btn('WhatsApp','secondary',()=>shareProposal(item,'whatsapp'));
@@ -1623,6 +1626,13 @@ async function renderProposalArchive(){
    row.append(content,actions);host.append(row);
   });
  }catch(err){host.innerHTML='<div class="empty">Não foi possível abrir o arquivo local de propostas: '+safeText(err.message||'erro')+'</div>'}
+}
+let activeProposalPreviewUrl=null;
+function showProposalPreview(item){
+ const panel=$('proposalInlinePreview'),frame=$('proposalPreviewFrame');if(!panel||!frame)return;
+ if(activeProposalPreviewUrl)URL.revokeObjectURL(activeProposalPreviewUrl);
+ activeProposalPreviewUrl=proposalObjectUrl(item);frame.src=activeProposalPreviewUrl;panel.style.display='block';
+ panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function proposalObjectUrl(item){return URL.createObjectURL(item.blob)}
 function openProposalPdf(item){
@@ -1673,7 +1683,7 @@ async function generateConcreteProposal(){
  const renderHost=document.createElement('div');
  // Manter o documento dentro do viewport e no fluxo da página durante a captura.
  // Elementos fixed/off-screen ou ancestrais ocultos podem resultar num PDF totalmente branco.
- renderHost.style.cssText='position:absolute;left:0;top:0;width:210mm;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;overflow:visible;box-sizing:border-box;padding:0;margin:0;';
+ renderHost.style.cssText='position:absolute;left:0;top:'+Math.max(0,window.scrollY)+'px;width:794px;min-height:100px;z-index:2147483000;background:#ffffff;opacity:1;visibility:visible;display:block;pointer-events:none;overflow:visible;box-sizing:border-box;padding:0;margin:0;';
  renderHost.innerHTML=proposalHtml(data);
  document.body.appendChild(renderHost);
  const pdfDocument=renderHost.querySelector('#proposalPdfDocument');
@@ -1686,7 +1696,7 @@ async function generateConcreteProposal(){
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const blob=await window.html2pdf().set({
    margin:[0,0,0,0],filename,image:{type:'jpeg',quality:0.98},
-   html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,foreignObjectRendering:false,windowWidth:Math.max(794,document.documentElement.clientWidth),onclone:(clonedDoc)=>{const root=clonedDoc.querySelector('#proposalPdfDocument');if(root){root.style.width='210mm';root.style.maxWidth='210mm';root.style.margin='0';root.style.padding='0';const sheet=root.querySelector('.sheet');if(sheet){sheet.style.width='190mm';sheet.style.maxWidth='190mm';sheet.style.margin='0 auto';sheet.style.padding='8mm';}}}},
+   html2canvas:{scale:1,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,foreignObjectRendering:false,windowWidth:794,windowHeight:1123,onclone:(clonedDoc)=>{const root=clonedDoc.querySelector('#proposalPdfDocument');if(root){root.style.width='210mm';root.style.maxWidth='210mm';root.style.margin='0';root.style.padding='0';const sheet=root.querySelector('.sheet');if(sheet){sheet.style.width='190mm';sheet.style.maxWidth='190mm';sheet.style.margin='0 auto';sheet.style.padding='8mm';}}}},
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
    pagebreak:{mode:['css','legacy'],avoid:['tr','img','header']}
   }).from(pdfDocument).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
@@ -1695,7 +1705,8 @@ async function generateConcreteProposal(){
   await saveProposalPdf(record);
   renderHost.remove();
   await renderProposalArchive();
-  alert('Proposta gerada e guardada no arquivo desta aplicação. Agora podes escolher Email ou WhatsApp no arquivo de propostas para partilhar o PDF.');
+  showProposalPreview(record);
+  alert('Proposta gerada e guardada no arquivo desta aplicação. A pré-visualização fica disponível aqui; podes partilhar o PDF através dos botões Email ou WhatsApp no arquivo.');
  }catch(err){
   console.error('Erro ao gerar/guardar proposta PDF:',err);
   alert('Não foi possível gerar ou guardar o PDF. '+(err.message||'Verifica se o navegador permite armazenamento local e tenta novamente.'));
@@ -1882,6 +1893,7 @@ $('concreteExportExcel').onclick=exportConcreteExcel;
 $('concreteAddNewComposition').addEventListener('click',()=>{setConcreteTab('simulator');renderSimulatorFields();$('simBaseComposition').value='';loadSimulatorBaseComposition();$('simBaseComposition').focus();});
 $('simCalculate').onclick=calcSimulator;$('simSave').onclick=saveSimulator;
 $('generateProposal').onclick=generateConcreteProposal;
+if($('closeProposalPreview'))$('closeProposalPreview').onclick=()=>{const panel=$('proposalInlinePreview'),frame=$('proposalPreviewFrame');if(frame)frame.src='about:blank';if(panel)panel.style.display='none';if(activeProposalPreviewUrl){URL.revokeObjectURL(activeProposalPreviewUrl);activeProposalPreviewUrl=null}};
 $('refreshProposalArchive').onclick=renderProposalArchive;
 $('proposalDate').value=localToday();
 loadConcreteData();renderConcrete();renderConcreteCosts();renderProposalRows();renderProposalArchive();
