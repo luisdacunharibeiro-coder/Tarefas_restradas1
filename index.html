@@ -209,7 +209,7 @@ body.concrete-focus #concretePanel>.panelhead{position:sticky;top:0;z-index:20;b
   </section>
 
   <section class="panel hidden" id="breakdownPanel">
-    <div class="panelhead"><div><h2>🛠️ Avarias</h2><div class="sub">Avarias por resolver e arquivo das resolvidas</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" type="button" id="toggleBreakdownForm" aria-expanded="false" onclick="toggleBreakdownFormVisibility()">Mostrar formulário</button><button class="secondary" type="button" id="toggleBreakdownArchive">📁 Ver arquivo de resolvidas</button><button class="secondary" id="closeBreakdown">Fechar</button></div></div>
+    <div class="panelhead"><div><h2>🛠️ Avarias</h2><div class="sub">Avarias por resolver e arquivo das resolvidas</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" type="button" id="toggleBreakdownForm" aria-expanded="false">Mostrar formulário</button><button class="secondary" type="button" id="toggleBreakdownArchive">📁 Ver arquivo de resolvidas</button><button class="secondary" id="closeBreakdown">Fechar</button></div></div>
     <div class="breakdown-summary" id="breakdownSummary"></div>
     <form id="breakdownForm" class="hidden">
       <input id="breakdownId" type="hidden">
@@ -1117,19 +1117,29 @@ function renderBreakdowns(){
  [[r.status,r.status==='Resolvida'?'':'medium'],['Gravidade '+r.severity,(r.severity==='Crítica'||r.severity==='Alta')?'high':r.severity==='Média'?'medium':''],['Data · '+dateLabel(r.date),''],['Equipamento parado · '+r.stopped,r.stopped==='Sim'?'high':''],['Paragem · '+(Number(r.hours)||0)+' h','']].forEach(([v,c])=>{const chip=document.createElement('span');chip.className='chip '+c;chip.textContent=v;chips.append(chip)});content.append(chips);
  if(r.externalRepair){const repair=document.createElement('div');repair.className='tasknotes';const pending=!r.repairCompletionDate;repair.style.cssText='margin-top:10px;padding:10px 12px;border-left:4px solid '+(pending?'#d97706':'#16804a')+';background:'+(pending?'#fff7e8':'#edf8f1')+';border-radius:8px';repair.textContent='🔧 Reparação externa · '+(pending?'PENDENTE':'CONCLUÍDA')+' | Empresa: '+(r.repairCompany||'—')+' | Pedido: '+(r.repairRequestDate?dateLabel(r.repairRequestDate):'—')+' | Conclusão: '+(r.repairCompletionDate?dateLabel(r.repairCompletionDate):'Por concluir');content.append(repair)}if(r.notes){const notes=document.createElement('div');notes.className='tasknotes';notes.textContent=r.notes;content.append(notes)}if(Array.isArray(r.photos)&&r.photos.length){const photos=document.createElement('div');photos.className='photo-preview';r.photos.forEach((src,i)=>{if(isPdfData(src)){const a=document.createElement('a');a.href='#';a.textContent='📄 '+attachmentName(src,i)+' — Abrir PDF';a.style.cssText='display:inline-block;padding:10px 14px;margin:4px;border:1px solid #d7e1dc;border-radius:8px';a.onclick=e=>{e.preventDefault();openPdfAttachment(src)};photos.append(a)}else{const img=document.createElement('img');img.src=src;img.className='photo-thumb';img.alt='Fotografia '+(i+1)+' da avaria';img.loading='lazy';img.title='Abrir fotografia';img.style.cursor='zoom-in';img.onclick=()=>{const w=window.open();if(w){w.document.write('<img src="'+src+'" style="max-width:100%;height:auto">');w.document.title='Fotografia da avaria'}};photos.append(img)}});content.append(photos)}const actions=document.createElement('div');actions.className='taskactions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>{editingBreakdownId=r.id;$('breakdownId').value=r.id;$('breakdownTitle').value=r.title;$('breakdownArea').value=r.area;$('breakdownEquipment').value=r.equipment;$('breakdownDate').value=r.date;$('breakdownSeverity').value=r.severity;$('breakdownStatus').value=r.status;$('breakdownStopped').value=r.stopped;$('breakdownHours').value=r.hours;$('breakdownExternalRepair').value=r.externalRepair?'Sim':'Não';$('breakdownRepairCompany').value=r.repairCompany||'';$('breakdownRepairRequestDate').value=r.repairRequestDate||'';$('breakdownRepairCompletionDate').value=r.repairCompletionDate||'';updateBreakdownRepairFields();$('breakdownNotes').value=r.notes||'';breakdownExistingPhotos=Array.isArray(r.photos)?r.photos.slice(0,4):[];$('breakdownPhotos').value='';renderBreakdownPhotoPreview();$('breakdownSave').textContent='Guardar alterações';$('breakdownForm').classList.remove('hidden');$('toggleBreakdownForm').textContent='Ocultar formulário';$('toggleBreakdownForm').setAttribute('aria-expanded','true');$('breakdownCancel').classList.remove('hidden');$('breakdownPanel').scrollIntoView({behavior:'smooth',block:'start'})};const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=r.status==='Resolvida'?'Reabrir':'Marcar resolvida';toggle.onclick=()=>{r.status=r.status==='Resolvida'?'Por resolver':'Resolvida';persistBreakdowns()};actions.append(edit,toggle);content.append(actions);el.append(content);list.append(el)});
 }
-function toggleBreakdownFormVisibility(){
-  const form=$('breakdownForm'), button=$('toggleBreakdownForm');
-  const willShow=form.classList.contains('hidden');
-  if(willShow&&!editingBreakdownId){
+$('toggleBreakdownForm').onclick=function(e){
+  e.preventDefault();
+  const form=$('breakdownForm');
+  const button=$('toggleBreakdownForm');
+  const isHidden=form.classList.contains('hidden') || getComputedStyle(form).display==='none';
+  if(isHidden && !editingBreakdownId){
     breakdownArchiveMode=false;
     resetBreakdownForm();
     renderBreakdowns();
   }
-  form.classList.toggle('hidden',!willShow);
-  button.textContent=willShow?'Ocultar formulário':'Mostrar formulário';
-  button.setAttribute('aria-expanded',willShow?'true':'false');
-  if(willShow) form.scrollIntoView({behavior:'smooth',block:'start'});
-}
+  if(isHidden){
+    form.classList.remove('hidden');
+    form.style.display='block';
+    button.textContent='Ocultar formulário';
+    button.setAttribute('aria-expanded','true');
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+  }else{
+    form.classList.add('hidden');
+    form.style.display='none';
+    button.textContent='Mostrar formulário';
+    button.setAttribute('aria-expanded','false');
+  }
+};
 $('breakdownExternalRepair').addEventListener('change',updateBreakdownRepairFields);
 $('breakdownPhotos').addEventListener('change',()=>{if($('breakdownPhotos').files.length+breakdownExistingPhotos.length>4){alert('Podes associar até 4 ficheiros (imagens/PDFs) por avaria. Remove anexos existentes ou seleciona menos ficheiros.');$('breakdownPhotos').value='';}renderBreakdownPhotoPreview()});
 $('breakdownForm').addEventListener('submit',async e=>{e.preventDefault();const files=Array.from($('breakdownPhotos').files||[]).slice(0,Math.max(0,4-breakdownExistingPhotos.length));const save=$('breakdownSave');save.disabled=true;save.textContent='A preparar fotografias…';try{const added=await Promise.all(files.map(processAttachment));const r={id:editingBreakdownId||Date.now().toString(36)+Math.random().toString(36).slice(2,7),title:$('breakdownTitle').value.trim(),area:$('breakdownArea').value,equipment:$('breakdownEquipment').value.trim(),date:$('breakdownDate').value,severity:$('breakdownSeverity').value,status:$('breakdownStatus').value,stopped:$('breakdownStopped').value,hours:Number($('breakdownHours').value)||0,notes:$('breakdownNotes').value.trim(),externalRepair:$('breakdownExternalRepair').value==='Sim',repairCompany:$('breakdownExternalRepair').value==='Sim'?$('breakdownRepairCompany').value.trim():'',repairRequestDate:$('breakdownExternalRepair').value==='Sim'?$('breakdownRepairRequestDate').value:'',repairCompletionDate:$('breakdownExternalRepair').value==='Sim'?$('breakdownRepairCompletionDate').value:'',photos:[...breakdownExistingPhotos,...added].slice(0,4)};const idx=breakdownRecords.findIndex(x=>x.id===r.id);if(idx>=0)breakdownRecords[idx]=r;else breakdownRecords.push(r);
