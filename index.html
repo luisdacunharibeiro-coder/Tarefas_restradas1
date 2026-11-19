@@ -468,22 +468,40 @@ function applyBackup(data){
   localStorage.setItem(BREAKDOWN_KEY,JSON.stringify(breakdownRecords));
   render();renderRecords("maintenance");renderRecords("calibration");renderBreakdowns();syncRecordsToCalendar();renderCalendar();renderCalendarReminders();
 }
+async function writeCloudSnapshot(){
+  if(!cloudUser||!cloudReady)return false;
+  const snapshot=JSON.parse(JSON.stringify(currentBackup()));
+  if(window.restradasManualLibrary)snapshot.manualPdfs=await window.restradasManualLibrary.exportAll();
+  const {error}=await supabaseClient.from("tarefas_restradas_dados").upsert({user_id:cloudUser.id,dados:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+  if(error)throw error;
+  cloudStatus("Sincronizado com a nuvem · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
+  return true;
+}
 function queueCloudSave(){
   if(!cloudUser||!cloudReady)return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>{
-    cloudWriteChain=cloudWriteChain.then(async()=>{
-      const snapshot=JSON.parse(JSON.stringify(currentBackup()));
-      if(window.restradasManualLibrary){
-        snapshot.manualPdfs=await window.restradasManualLibrary.exportAll();
-      }
-      const {error}=await supabaseClient.from("tarefas_restradas_dados").upsert({user_id:cloudUser.id,dados:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});
-      if(error)throw error;
-      cloudStatus("Sincronizado com a nuvem · "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
-    }).catch(err=>{console.error("Erro de sincronização:",err);cloudStatus("Erro ao sincronizar. Verifica a ligação e o espaço disponível na nuvem.");});
+    cloudWriteChain=cloudWriteChain.then(writeCloudSnapshot).catch(err=>{console.error("Erro de sincronização:",err);cloudStatus("Erro ao sincronizar: "+(err.message||"verifica a ligação à internet."));});
   },500);
 }
+async function flushCloudSave(){
+  if(!cloudUser||!cloudReady)return false;
+  clearTimeout(cloudSaveTimer);
+  cloudWriteChain=cloudWriteChain.then(writeCloudSnapshot);
+  return await cloudWriteChain;
+}
 async function connectCloudSession(user){
+  // Preservar os registos locais antes de receber a cópia da nuvem.
+  // A cópia remota pode ainda não conter uma avaria criada neste dispositivo.
+  let localBreakdownsBeforeSync=[];
+  try{
+    const localParsed=JSON.parse(localStorage.getItem(BREAKDOWN_KEY)||'[]');
+    if(Array.isArray(localParsed))localBreakdownsBeforeSync=localParsed;
+  }catch(e){console.warn("Não foi possível ler as avarias locais antes da sincronização.",e)}
+  if(Array.isArray(breakdownRecords)){
+    const known=new Set(localBreakdownsBeforeSync.map(x=>String(x.id)));
+    breakdownRecords.forEach(x=>{if(!known.has(String(x.id)))localBreakdownsBeforeSync.push(x)});
+  }
   cloudUser=user;cloudReady=false;
   document.getElementById("cloudLoginForm").classList.add("hidden");
   document.getElementById("cloudLogout").classList.remove("hidden");
@@ -502,12 +520,19 @@ async function connectCloudSession(user){
   }
   const mergedPdfs=[...merged.values()];
   if(cloudData){
-    applyBackup(cloudData);
+    const cloudBreakdowns=Array.isArray(cloudData.breakdownRecords)?cloudData.breakdownRecords:[];
+    const mergedBreakdowns=[...cloudBreakdowns];
+    const cloudBreakdownIds=new Set(cloudBreakdowns.map(x=>String(x.id)));
+    // Acrescentar registos locais que ainda não chegaram à nuvem, sem duplicar IDs.
+    localBreakdownsBeforeSync.forEach(record=>{
+      if(!cloudBreakdownIds.has(String(record.id)))mergedBreakdowns.push(record);
+    });
+    applyBackup({...cloudData,breakdownRecords:mergedBreakdowns});
     cloudReady=true;
     try{if(window.restradasManualLibrary)await window.restradasManualLibrary.importAll(mergedPdfs)}catch(e){console.error("Erro ao restaurar PDFs da nuvem",e);cloudStatus("Dados ligados, mas alguns PDFs não foram restaurados neste dispositivo.");}
-    if(mergedPdfs.length>cloudPdfs.length || !Array.isArray(cloudData.manualPdfs)){
+    if(mergedPdfs.length>cloudPdfs.length || !Array.isArray(cloudData.manualPdfs) || mergedBreakdowns.length>cloudBreakdowns.length){
       queueCloudSave();
-      cloudStatus("A sincronizar documentos PDF entre dispositivos…");
+      cloudStatus(mergedBreakdowns.length>cloudBreakdowns.length?"A recuperar avarias locais e a sincronizar com a nuvem…":"A sincronizar documentos PDF entre dispositivos…");
     }else{
       cloudStatus("Ligado e sincronizado. Podes usar o PC e o iPhone.");
     }
@@ -1157,7 +1182,13 @@ $('breakdownForm').addEventListener('submit',async e=>{e.preventDefault();const 
     resetBreakdownForm();
     $('breakdownForm').classList.add('hidden');$('breakdownForm').style.display='none';$('toggleBreakdownForm').textContent='Mostrar formulário';$('toggleBreakdownForm').setAttribute('aria-expanded','false');
     renderBreakdowns();
-    alert('Avaria guardada com sucesso e apresentada na lista.');}catch(err){alert('Não foi possível processar uma das fotografias. Tenta outra imagem.')}finally{save.disabled=false;if(editingBreakdownId)save.textContent='Guardar alterações';else save.textContent='Guardar avaria'}});
+    if(cloudUser&&cloudReady){
+      try{await flushCloudSave();alert('Avaria guardada e sincronizada com a nuvem. Já deverá aparecer no telemóvel quando atualizares a aplicação.');}
+      catch(syncErr){console.error('Falha ao sincronizar avaria:',syncErr);cloudStatus('Avaria guardada neste PC, mas falhou a sincronização: '+(syncErr.message||'erro de ligação'));alert('A avaria ficou guardada neste PC, mas NÃO foi sincronizada com a nuvem. Verifica o estado da ligação no topo da aplicação.');}
+    }else{
+      alert('Avaria guardada neste PC. Para aparecer no telemóvel, inicia sessão na mesma conta e aguarda a sincronização.');
+    }
+    }catch(err){alert('Não foi possível processar uma das fotografias. Tenta outra imagem.')}finally{save.disabled=false;if(editingBreakdownId)save.textContent='Guardar alterações';else save.textContent='Guardar avaria'}});
 $('breakdownCancel').onclick=resetBreakdownForm;$('toggleBreakdownArchive').onclick=()=>{breakdownArchiveMode=!breakdownArchiveMode;renderBreakdowns()};$('breakdownSearch').addEventListener('input',renderBreakdowns);$('breakdownFilters').addEventListener('click',e=>{const b=e.target.closest('[data-breakdown-filter]');if(!b)return;breakdownFilter=b.dataset.breakdownFilter;$('breakdownFilters').querySelectorAll('[data-breakdown-filter]').forEach(x=>x.classList.toggle('active',x===b));renderBreakdowns()});
 function showBreakdownPanel(){$('weeklyPanel').classList.add('hidden');$('maintenancePanel').classList.add('hidden');$('calibrationPanel').classList.add('hidden');$('breakdownPanel').classList.remove('hidden');renderBreakdowns();$('breakdownPanel').scrollIntoView({behavior:'smooth',block:'start'})}
 $('breakdownNav').onclick=showBreakdownPanel;$('openBreakdownsFromHome').onclick=showBreakdownPanel;$('closeBreakdown').onclick=()=>$('breakdownPanel').classList.add('hidden');
