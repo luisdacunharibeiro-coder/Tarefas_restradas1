@@ -493,15 +493,20 @@ async function flushCloudSave(){
 async function connectCloudSession(user){
   // Preservar os registos locais antes de receber a cópia da nuvem.
   // A cópia remota pode ainda não conter uma avaria criada neste dispositivo.
-  let localBreakdownsBeforeSync=[];
-  try{
-    const localParsed=JSON.parse(localStorage.getItem(BREAKDOWN_KEY)||'[]');
-    if(Array.isArray(localParsed))localBreakdownsBeforeSync=localParsed;
-  }catch(e){console.warn("Não foi possível ler as avarias locais antes da sincronização.",e)}
-  if(Array.isArray(breakdownRecords)){
-    const known=new Set(localBreakdownsBeforeSync.map(x=>String(x.id)));
-    breakdownRecords.forEach(x=>{if(!known.has(String(x.id)))localBreakdownsBeforeSync.push(x)});
-  }
+  const readLocalArray=(key,fallback=[])=>{
+    try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:fallback}catch(e){return fallback}
+  };
+  const mergeById=(remote,local)=>{
+    const merged=Array.isArray(remote)?remote.slice():[];
+    const ids=new Set(merged.map(x=>String(x.id)));
+    (Array.isArray(local)?local:[]).forEach(item=>{
+      if(!ids.has(String(item.id))){merged.push(item);ids.add(String(item.id))}
+    });
+    return merged;
+  };
+  const localMaintenanceBeforeSync=mergeById(maintenanceRecords,readLocalArray(MAINT_KEY));
+  const localCalibrationsBeforeSync=mergeById(calibrationRecords,readLocalArray(CAL_KEY));
+  const localBreakdownsBeforeSync=mergeById(breakdownRecords,readLocalArray(BREAKDOWN_KEY));
   cloudUser=user;cloudReady=false;
   document.getElementById("cloudLoginForm").classList.add("hidden");
   document.getElementById("cloudLogout").classList.remove("hidden");
@@ -521,18 +526,22 @@ async function connectCloudSession(user){
   const mergedPdfs=[...merged.values()];
   if(cloudData){
     const cloudBreakdowns=Array.isArray(cloudData.breakdownRecords)?cloudData.breakdownRecords:[];
-    const mergedBreakdowns=[...cloudBreakdowns];
-    const cloudBreakdownIds=new Set(cloudBreakdowns.map(x=>String(x.id)));
-    // Acrescentar registos locais que ainda não chegaram à nuvem, sem duplicar IDs.
-    localBreakdownsBeforeSync.forEach(record=>{
-      if(!cloudBreakdownIds.has(String(record.id)))mergedBreakdowns.push(record);
-    });
-    applyBackup({...cloudData,breakdownRecords:mergedBreakdowns});
+    const cloudMaintenance=Array.isArray(cloudData.maintenanceRecords)?cloudData.maintenanceRecords:[];
+    const cloudCalibrations=Array.isArray(cloudData.calibrationRecords)?cloudData.calibrationRecords:[];
+    // Preservar todos os registos locais que ainda não estejam na nuvem.
+    const mergedBreakdowns=mergeById(cloudBreakdowns,localBreakdownsBeforeSync);
+    const mergedMaintenance=mergeById(cloudMaintenance,localMaintenanceBeforeSync);
+    const mergedCalibrations=mergeById(cloudCalibrations,localCalibrationsBeforeSync);
+    applyBackup({...cloudData,breakdownRecords:mergedBreakdowns,maintenanceRecords:mergedMaintenance,calibrationRecords:mergedCalibrations});
     cloudReady=true;
     try{if(window.restradasManualLibrary)await window.restradasManualLibrary.importAll(mergedPdfs)}catch(e){console.error("Erro ao restaurar PDFs da nuvem",e);cloudStatus("Dados ligados, mas alguns PDFs não foram restaurados neste dispositivo.");}
-    if(mergedPdfs.length>cloudPdfs.length || !Array.isArray(cloudData.manualPdfs) || mergedBreakdowns.length>cloudBreakdowns.length){
+    if(mergedPdfs.length>cloudPdfs.length || !Array.isArray(cloudData.manualPdfs) || mergedBreakdowns.length>cloudBreakdowns.length || mergedMaintenance.length>cloudMaintenance.length || mergedCalibrations.length>cloudCalibrations.length){
       queueCloudSave();
-      cloudStatus(mergedBreakdowns.length>cloudBreakdowns.length?"A recuperar avarias locais e a sincronizar com a nuvem…":"A sincronizar documentos PDF entre dispositivos…");
+      const recovered=[];
+      if(mergedBreakdowns.length>cloudBreakdowns.length)recovered.push("avarias");
+      if(mergedMaintenance.length>cloudMaintenance.length)recovered.push("manutenções");
+      if(mergedCalibrations.length>cloudCalibrations.length)recovered.push("calibrações/ensaios");
+      cloudStatus(recovered.length?"A recuperar "+recovered.join(", ")+" locais e a sincronizar com a nuvem…":"A sincronizar documentos PDF entre dispositivos…");
     }else{
       cloudStatus("Ligado e sincronizado. Podes usar o PC e o iPhone.");
     }
@@ -1077,9 +1086,21 @@ function setupRecordForm(kind){
       r.reminder=String(document.getElementById('maintenanceReminder')?.value||'0');
     }
     if(idx>=0)arr[idx]=r;else arr.push(r);
-    // Persist immediately before re-render/reset, including the next maintenance date.
-    localStorage.setItem(isM?MAINT_KEY:CAL_KEY,JSON.stringify(arr));
-    saveRecords(kind);resetRecordForm(kind);
+    // Persist and verify locally before resetting the form.
+    try{
+      localStorage.setItem(isM?MAINT_KEY:CAL_KEY,JSON.stringify(arr));
+      const verify=JSON.parse(localStorage.getItem(isM?MAINT_KEY:CAL_KEY)||'[]');
+      if(!Array.isArray(verify)||!verify.some(item=>String(item.id)===String(id)))throw new Error("O registo não foi confirmado no armazenamento local.");
+      saveRecords(kind);
+      resetRecordForm(kind);
+      $(prefix+'Form').classList.add('hidden');
+      $('toggle'+(isM?'Maintenance':'Calibration')+'Form').textContent='Mostrar formulário';
+      $('toggle'+(isM?'Maintenance':'Calibration')+'Form').setAttribute('aria-expanded','false');
+      alert(isM?'Manutenção guardada com sucesso.':'Registo guardado com sucesso.');
+    }catch(err){
+      console.error("Erro ao guardar registo:",err);
+      alert("Não foi possível confirmar a gravação. O formulário foi mantido para não perderes os dados. "+(err.message||""));
+    }
   });
   $(prefix+'Cancel').onclick=()=>resetRecordForm(kind);
 }
